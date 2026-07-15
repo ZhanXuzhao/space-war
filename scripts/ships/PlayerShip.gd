@@ -16,8 +16,6 @@ signal module_activated(slot_index: int, module_name: String)
 @export var warp_acceleration: float = 500.0
 
 var flight_mode: FlightMode = FlightMode.NORMAL
-var move_target: Vector3 = Vector3.ZERO
-var has_move_order: bool = false
 var warp_target: Vector3 = Vector3.ZERO
 var warp_progress: float = 0.0
 var warp_charge_time: float = 3.0
@@ -27,10 +25,27 @@ var angular_velocity: Vector3 = Vector3.ZERO
 ## 模块管理
 var module_manager: Node
 
+## 视角控制
+@export var camera_orbit_speed: float = 0.005
+@export var camera_zoom_speed: float = 5.0
+@export var camera_min_distance: float = 10.0
+@export var camera_max_distance: float = 500.0
+@export var camera_default_distance: float = 30.0
+
+var _camera: Camera3D
+var _cam_distance: float = 30.0
+var _cam_azimuth: float = 0.0      # 水平角度（度）
+var _cam_elevation: float = 15.0   # 俯仰角度（度）
+var _right_click_pressed: bool = false
+var _right_click_drag_start: Vector2 = Vector2.ZERO
+var is_right_click_drag: bool = false
+
 func _ready() -> void:
 	super._ready()
 	move_target = global_position
 	module_manager = get_node_or_null("../ModuleManager")
+	_camera = $Camera3D
+	_cam_distance = camera_default_distance
 
 func _process(delta: float) -> void:
 	super._process(delta)
@@ -40,6 +55,8 @@ func _process(delta: float) -> void:
 			_process_normal_flight(delta)
 		FlightMode.WARPING:
 			_process_warp(delta)
+	
+	_update_camera()
 
 func _physics_process(delta: float) -> void:
 	if not is_alive:
@@ -84,8 +101,7 @@ func _handle_movement(delta: float) -> void:
 func order_move_to(position: Vector3) -> void:
 	if flight_mode != FlightMode.NORMAL:
 		return
-	move_target = position
-	has_move_order = true
+	super.order_move_to(position)
 
 ## 鼠标左键 - 选择/锁定目标
 func try_lock_ship(target: Ship) -> void:
@@ -148,6 +164,18 @@ func fire_weapons(target: Ship, delta: float) -> void:
 		if weapon is Weapon:
 			weapon.try_fire(target, delta)
 
+## 更新相机位置（球面坐标环绕飞船）
+func _update_camera() -> void:
+	if not _camera:
+		return
+	var rad_az = deg_to_rad(_cam_azimuth)
+	var rad_el = deg_to_rad(_cam_elevation)
+	var x = _cam_distance * cos(rad_el) * sin(rad_az)
+	var y = _cam_distance * sin(rad_el)
+	var z = _cam_distance * cos(rad_el) * cos(rad_az)
+	_camera.position = Vector3(x, y, z)
+	_camera.look_at(Vector3.ZERO)
+
 ## 键盘快捷键
 func _input(event: InputEvent) -> void:
 	if not is_alive:
@@ -163,3 +191,29 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		has_move_order = false
 		current_speed = 0.0
+	
+	# 右键拖拽 - 旋转视角
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.pressed:
+			_right_click_pressed = true
+			_right_click_drag_start = get_viewport().get_mouse_position()
+			is_right_click_drag = false
+		else:
+			_right_click_pressed = false
+	
+	if event is InputEventMouseMotion and _right_click_pressed:
+		if not is_right_click_drag:
+			var drag_dist = _right_click_drag_start.distance_to(get_viewport().get_mouse_position())
+			if drag_dist > 5.0:
+				is_right_click_drag = true
+		if is_right_click_drag:
+			_cam_azimuth -= event.relative.x * camera_orbit_speed * rad_to_deg(1.0)
+			_cam_elevation += event.relative.y * camera_orbit_speed * rad_to_deg(1.0)
+			_cam_elevation = clampf(_cam_elevation, -89.0, 89.0)
+	
+	# 滚轮 - 拉近拉远
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			_cam_distance = maxf(camera_min_distance, _cam_distance - camera_zoom_speed)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			_cam_distance = minf(camera_max_distance, _cam_distance + camera_zoom_speed)

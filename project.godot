@@ -19,6 +19,26 @@ config/icon="res://icon.svg"
 
 3d/physics_engine="Jolt Physics"
 
+[input]
+
+weapon_group_1={
+"deadzone": 0.5,
+"events": [{
+"type": 0,
+"keycode": 0,
+"physical_keycode": 49,
+"key_label": 0,
+"unicode": 49,
+"location": 0,
+"ctrl": false,
+"alt": false,
+"shift": false,
+"metakey": false,
+"command": false,
+"pressed": false
+}]
+}
+
 [autoload]
 
 Global="*res://autoload/Global.gd"

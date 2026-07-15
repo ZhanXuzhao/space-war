@@ -9,6 +9,9 @@ var current_mode: ClickMode = ClickMode.SELECT
 var player_ship: PlayerShip = null
 var camera: Camera3D
 
+var _right_click_press_pos: Vector2 = Vector2.ZERO
+var _right_click_pressed: bool = false
+
 func _ready() -> void:
 	# 延迟一帧以等待场景加载
 	await get_tree().process_frame
@@ -25,9 +28,16 @@ func _input(event: InputEvent) -> void:
 	if not player_ship or not camera:
 		return
 	
-	# 鼠标右键 - 移动/交互
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-		_handle_right_click(event)
+	# 鼠标右键 - 在释放时判断：拖拽（旋转视角）vs 点击（移动/交互）
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.pressed:
+			_right_click_press_pos = get_viewport().get_mouse_position()
+			_right_click_pressed = true
+		elif _right_click_pressed and not player_ship.is_right_click_drag:
+			_right_click_pressed = false
+			_handle_right_click(event)
+		else:
+			_right_click_pressed = false
 	
 	# 鼠标左键 - 选择目标
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:

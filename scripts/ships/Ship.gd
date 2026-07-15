@@ -31,6 +31,10 @@ var current_capacitor: float
 var current_speed: float = 0.0
 var is_alive: bool = true
 
+## 移动控制（由 PlayerShip 或 AI 驱动）
+var has_move_order: bool = false
+var move_target: Vector3 = Vector3.ZERO
+
 ## 目标与战斗
 var locked_targets: Array[Ship] = []
 var active_target: Ship = null
@@ -132,6 +136,11 @@ func unlock_target(target: Ship) -> void:
 func set_active_target(target: Ship) -> void:
 	if target in locked_targets:
 		active_target = target
+
+## 移动到目标位置（基类实现，PlayerShip 可覆写）
+func order_move_to(position: Vector3) -> void:
+	move_target = position
+	has_move_order = true
 
 ## 使用电容
 func use_capacitor(amount: float) -> bool:
