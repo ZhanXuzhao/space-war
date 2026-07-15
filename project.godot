@@ -11,12 +11,17 @@ config_version=5
 [application]
 
 config/name="SpaceWar"
+run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
 [physics]
 
 3d/physics_engine="Jolt Physics"
+
+[autoload]
+
+Global="*res://autoload/Global.gd"
 
 [rendering]
 
