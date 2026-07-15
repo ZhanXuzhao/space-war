@@ -29,29 +29,6 @@ bg_color = Color(0.15, 0.15, 0.2, 0.8)
 
 [node name="HUD" type="CanvasLayer" unique_id=1924590340]
 script = ExtResource("1")
-shield_bar = NodePath("ShipStatusPanel/ShieldBar")
-armor_bar = NodePath("ShipStatusPanel/ArmorBar")
-hull_bar = NodePath("ShipStatusPanel/HullBar")
-capacitor_bar = NodePath("ShipStatusPanel/CapacitorBar")
-speed_label = NodePath("ShipStatusPanel/SpeedLabel")
-ship_name_label = NodePath("ShipStatusPanel/ShipName")
-target_info_panel = NodePath("TargetPanel")
-target_name_label = NodePath("TargetPanel/TargetName")
-target_type_label = NodePath("TargetPanel/TargetType")
-target_dist_label = NodePath("TargetPanel/TargetDistLabel")
-target_shield_bar = NodePath("TargetPanel/TargetShieldBar")
-target_armor_bar = NodePath("TargetPanel/TargetArmorBar")
-target_hull_bar = NodePath("TargetPanel/TargetHullBar")
-btn_approach = NodePath("TargetPanel/BtnApproach")
-btn_orbit = NodePath("TargetPanel/BtnOrbit")
-btn_warp = NodePath("TargetPanel/BtnWarp")
-overview_list = NodePath("OverviewPanel/ScrollContainer/OverviewList")
-capacitor_text_label = NodePath("ShipStatusPanel/CapacitorLabel")
-isk_label = NodePath("TopBar/ISKLabel")
-location_label = NodePath("TopBar/LocationLabel")
-message_log = NodePath("MessageLog")
-context_menu = NodePath("OverviewContextMenu")
-spawn_button = NodePath("SpawnButton")
 
 [node name="ShipStatusPanel" type="Panel" parent="." unique_id=724607298]
 anchors_preset = 2
@@ -170,14 +147,14 @@ offset_top = 10.0
 offset_right = -10.0
 offset_bottom = 300.0
 
-[node name="THandleLeft" type="Control" parent="TargetPanel"]
+[node name="THandleLeft" type="Control" parent="TargetPanel" unique_id=1569402116]
 anchors_preset = 0
 anchor_bottom = 1.0
 offset_left = -4.0
 offset_right = 4.0
 mouse_default_cursor_shape = 10
 
-[node name="THandleRight" type="Control" parent="TargetPanel"]
+[node name="THandleRight" type="Control" parent="TargetPanel" unique_id=1551409240]
 anchors_preset = 0
 anchor_left = 1.0
 anchor_right = 1.0
@@ -186,14 +163,14 @@ offset_left = -4.0
 offset_right = 4.0
 mouse_default_cursor_shape = 10
 
-[node name="THandleTop" type="Control" parent="TargetPanel"]
+[node name="THandleTop" type="Control" parent="TargetPanel" unique_id=1366612591]
 anchors_preset = 0
 anchor_right = 1.0
 offset_top = -4.0
 offset_bottom = 4.0
 mouse_default_cursor_shape = 9
 
-[node name="THandleBottom" type="Control" parent="TargetPanel"]
+[node name="THandleBottom" type="Control" parent="TargetPanel" unique_id=659837129]
 anchors_preset = 0
 anchor_top = 1.0
 anchor_right = 1.0
@@ -469,10 +446,10 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -400.0
-offset_top = -200.0
-offset_right = -10.0
-offset_bottom = -10.0
+offset_left = -569.0
+offset_top = -511.0
+offset_right = -914.0
+offset_bottom = -367.0
 theme_override_colors/default_color = Color(0.7, 0.7, 0.7, 0.7)
 
 [node name="OverviewContextMenu" type="PopupMenu" parent="." unique_id=1187790722]

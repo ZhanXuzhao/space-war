@@ -74,9 +74,9 @@ func _try_spawn_enemy() -> void:
 	# 设置阵营（名字由 Ship.gd 自动生成）
 	enemy.faction = Ship.Faction.NPC_HOSTILE
 	
-	# 直接添加到场景树
-	get_tree().current_scene.add_child(enemy)
+	# 直接添加到场景树（先设位置再 add_child，防止 _ready 时敌人在 (0,0,0)）
 	enemy.global_position = spawn_pos
+	get_tree().current_scene.add_child(enemy)
 	
 	current_enemies.append(enemy)
 	enemy_spawned.emit(enemy)

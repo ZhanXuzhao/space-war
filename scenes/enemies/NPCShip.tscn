@@ -37,9 +37,3 @@ orbit_range = 1500.0
 flee_shield_percent = 25.0
 aggro_chance = 1.0
 light_energy = 1.0
-
-[node name="AIController" type="Node" parent="."]
-script = ExtResource("3")
-detection_range = 12000.0
-engagement_range = 1800.0
-orbit_range = 1200.0

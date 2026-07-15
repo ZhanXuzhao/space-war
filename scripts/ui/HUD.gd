@@ -81,6 +81,11 @@ func _ready() -> void:
 	# 手动查找速度标签（场景 NodePath 绑定不生效）
 	if not speed_label:
 		speed_label = get_node_or_null("ShipStatusPanel/SpeedLabel") as Label
+	# 手动查找召唤按钮和消息日志
+	if not spawn_button:
+		spawn_button = get_node_or_null("SpawnButton") as Button
+	if not message_log:
+		message_log = get_node_or_null("MessageLog") as RichTextLabel
 	
 	# 总览面板四边拖拽缩放
 	for edge in ["HandleLeft", "HandleRight", "HandleTop", "HandleBottom"]:
@@ -155,12 +160,15 @@ func _ready() -> void:
 	# 连接召唤按钮
 	if spawn_button:
 		spawn_button.pressed.connect(_on_spawn_button_pressed)
+		print("HUD: spawn_button 已绑定，手动召唤敌人功能可用")
 		# 找到 EnemySpawner
 		enemy_spawner = get_node_or_null("/root/SpaceWar/EnemySpawner") as EnemySpawner
 		if not enemy_spawner:
 			# 延迟再试
 			await get_tree().create_timer(0.5).timeout
 			enemy_spawner = get_node_or_null("/root/SpaceWar/EnemySpawner") as EnemySpawner
+	else:
+		print("HUD: spawn_button 未绑定，无法手动召唤敌人")
 
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
