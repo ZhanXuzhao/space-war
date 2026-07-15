@@ -19,15 +19,7 @@ var player_ship: Ship = null
 var current_enemies: Array[Ship] = []
 var spawn_timer: float = 0.0
 
-## 随机飞船名字池
-var _ship_names: Array[String] = [
-	"镰刀级", "匕首级", "长矛级", "利剑级", "战斧级",
-	"铁锤级", "巨锤级", "流星级", "彗星级", "脉冲级",
-	"风暴级", "雷霆级", "暗影级", "毒蛇级", "狂怒级",
-	"猎犬级", "恶狼级", "猛虎级", "秃鹫级", "猎鹰级",
-	"复仇级", "毁灭级", "审判级", "末日级", "深渊级",
-]
-var _name_index: int = 0
+## 随机飞船名字 (由 Ship.gd 自动生成)
 var next_spawn_time: float = 0.0
 var is_active: bool = false
 
@@ -118,11 +110,8 @@ func _try_spawn_enemy() -> void:
 		sin(angle) * distance
 	)
 	
-	# 设置阵营和名字
+	# 设置阵营（名字由 Ship.gd 自动生成）
 	enemy.faction = Ship.Faction.NPC_HOSTILE
-	if not enemy.ship_data:
-		enemy.ship_data = ShipData.new()
-	enemy.ship_data.ship_name = _get_next_name()
 	
 	# 直接添加到场景树
 	get_tree().current_scene.add_child(enemy)
@@ -160,12 +149,6 @@ func _start_warp_effect(pos: Vector3) -> void:
 func _spawn_initial_wave() -> void:
 	print("EnemySpawner: 开局生成第一波敌舰")
 	next_spawn_time = 1.0  # 第一波后快速进入正常循环
-
-## 获取下一个飞船名字（循环使用，每艘不同）
-func _get_next_name() -> String:
-	var name_str = _ship_names[_name_index % _ship_names.size()]
-	_name_index += 1
-	return name_str
 
 ## 手动召唤一波敌人（由按钮触发）
 func spawn_wave(count: int = -1) -> void:

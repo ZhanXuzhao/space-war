@@ -24,7 +24,7 @@ signal target_lost(target: Ship)
 @export var rotation_speed: float = 2.0
 @export var cargo_capacity: float = 500.0
 @export var signature_radius: float = 40.0
-@export var max_locked_targets: int = 4
+@export var max_locked_targets: int = 8
 
 ## 当前状态
 var current_shield: float
@@ -62,11 +62,30 @@ func _ready() -> void:
 	_init_stats()
 	_setup_velocity_arrow()
 
+## 随机飞船名字池
+static var _ship_names: Array[String] = [
+	"镰刀级", "匕首级", "长矛级", "利剑级", "战斧级",
+	"铁锤级", "巨锤级", "流星级", "彗星级", "脉冲级",
+	"风暴级", "雷霆级", "暗影级", "毒蛇级", "狂怒级",
+	"猎犬级", "恶狼级", "猛虎级", "猎鹰级", "游隼级",
+	"复仇级", "毁灭级", "审判级", "末日级", "深渊级",
+]
+static var _name_index: int = 0
+
 func _init_stats() -> void:
 	current_shield = max_shield
 	current_armor = max_armor
 	current_hull = max_hull
 	current_capacitor = max_capacitor
+	# 如果没有 ship_data，自动生成一个并分配随机名字
+	if not ship_data:
+		ship_data = ShipData.new()
+		ship_data.ship_name = _get_random_name()
+
+static func _get_random_name() -> String:
+	var name_str = _ship_names[_name_index % _ship_names.size()]
+	_name_index += 1
+	return name_str
 
 ## 创建速度箭头（绿色锥体，方向朝前，长度随速度变化）
 func _setup_velocity_arrow() -> void:
@@ -187,6 +206,8 @@ func _spawn_explosion() -> void:
 func lock_target(target: Ship) -> bool:
 	if not target.is_alive:
 		return false
+	# 清理已失效的锁定目标引用
+	_cleanup_locked_targets()
 	if locked_targets.size() >= max_locked_targets:
 		return false
 	if target in locked_targets:
@@ -205,6 +226,10 @@ func unlock_target(target: Ship) -> void:
 	if active_target == target:
 		active_target = null
 	target_lost.emit(target)
+
+## 清理已失效的锁定目标（被摧毁/freed 的引用）
+func _cleanup_locked_targets() -> void:
+	locked_targets = locked_targets.filter(func(t): return is_instance_valid(t) and t.is_alive)
 
 func set_active_target(target: Ship) -> void:
 	if target in locked_targets:

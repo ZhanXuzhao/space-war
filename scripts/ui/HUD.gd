@@ -86,7 +86,13 @@ func _ready() -> void:
 	for edge in ["HandleLeft", "HandleRight", "HandleTop", "HandleBottom"]:
 		var h = get_node_or_null("OverviewPanel/" + edge)
 		if h:
-			h.gui_input.connect(_on_resize_handle_input.bind(edge))
+			h.gui_input.connect(_on_resize_handle_input.bind("OverviewPanel", edge))
+	
+	# 目标信息面板四边拖拽缩放
+	for edge in ["THandleLeft", "THandleRight", "THandleTop", "THandleBottom"]:
+		var h = get_node_or_null("TargetPanel/" + edge)
+		if h:
+			h.gui_input.connect(_on_resize_handle_input.bind("TargetPanel", edge))
 	
 	# 总览面板标题栏拖拽移动
 	var header = get_node_or_null("OverviewPanel/HeaderBg")
@@ -118,6 +124,9 @@ func _ready() -> void:
 		_speed_header.gui_input.connect(_on_header_click.bind(SortColumn.SPEED))
 	
 	_update_sort_indicators()
+	
+	# 加载保存的面板布局
+	_load_panel_layout()
 	
 	_find_player()
 	
@@ -229,6 +238,18 @@ func _update_speed() -> void:
 ## ====== 目标信息 ======
 
 func _on_target_locked(target: Ship) -> void:
+	# 断开上一个目标的信号
+	if _target_node and is_instance_valid(_target_node) and _target_node is Ship:
+		var old = _target_node as Ship
+		if old.shield_changed.is_connected(_update_target_shield):
+			old.shield_changed.disconnect(_update_target_shield)
+		if old.armor_changed.is_connected(_update_target_armor):
+			old.armor_changed.disconnect(_update_target_armor)
+		if old.hull_changed.is_connected(_update_target_hull):
+			old.hull_changed.disconnect(_update_target_hull)
+		if old.ship_destroyed.is_connected(_on_target_destroyed):
+			old.ship_destroyed.disconnect(_on_target_destroyed)
+	
 	_target_node = target
 	if target_info_panel:
 		target_info_panel.show()
@@ -365,7 +386,7 @@ func _classify_object(obj: Node, distance: float) -> Dictionary:
 
 func _refresh_overview_list(entries: Array[Dictionary]) -> void:
 	if not overview_list:
-		print("总览: overview_list 为 null!")
+		return
 		return
 	# 清空列表
 	for child in overview_list.get_children():
@@ -460,6 +481,7 @@ func _on_header_drag_input(event: InputEvent) -> void:
 			_drag_start_panel_offset = Vector2(panel.offset_left, panel.offset_top)
 		else:
 			_is_dragging_panel = false
+			_save_panel_layout()
 	
 	if event is InputEventMouseMotion and _is_dragging_panel:
 		var mouse_pos = get_viewport().get_mouse_position()
@@ -472,8 +494,8 @@ func _on_header_drag_input(event: InputEvent) -> void:
 
 ## ====== 总览面板四边拖拽缩放 ======
 
-func _on_resize_handle_input(event: InputEvent, edge: String) -> void:
-	var panel = get_node_or_null("OverviewPanel")
+func _on_resize_handle_input(event: InputEvent, panel_name: String, edge: String) -> void:
+	var panel = get_node_or_null(panel_name)
 	if not panel:
 		return
 	
@@ -491,33 +513,36 @@ func _on_resize_handle_input(event: InputEvent, edge: String) -> void:
 			_resize_start_bottom = panel.offset_bottom
 		else:
 			_is_resizing = false
+			_save_panel_layout()
 	
 	if event is InputEventMouseMotion and _is_resizing:
 		var mpos = get_viewport().get_mouse_position()
 		var dx = mpos.x - _resize_start_x
 		var dy = mpos.y - _resize_start_y
 		
-		match edge:
-			"HandleLeft":
-				var new_offset = _resize_start_offset + dx
-				new_offset = clampf(new_offset, -viewport_size.x * 0.5, -150.0)
-				panel.offset_left = new_offset
-			"HandleRight":
-				var new_right = _resize_start_right + dx
-				var min_right = panel.offset_left + 150.0
-				new_right = clampf(new_right, min_right, -10.0)
-				panel.offset_right = new_right
-			"HandleTop":
-				var new_top = _resize_start_top + dy
-				# offset_bottom 是相对父节点底边，需转为相对顶边的坐标
-				var bottom_in_top = viewport_size.y + panel.offset_bottom
-				new_top = clampf(new_top, 30.0, bottom_in_top - 100.0)
-				panel.offset_top = new_top
-			"HandleBottom":
-				var new_bottom = _resize_start_bottom + dy
-				var min_bottom = panel.offset_top + 100.0
-				new_bottom = clampf(new_bottom, min_bottom, viewport_size.y - 10.0)
-				panel.offset_bottom = new_bottom
+		var is_target = panel_name == "TargetPanel"
+		var min_w = 150.0 if not is_target else 100.0
+		var min_h = 100.0 if not is_target else 80.0
+		
+		if edge.ends_with("Left"):
+			var new_offset = _resize_start_offset + dx
+			new_offset = clampf(new_offset, -viewport_size.x * 0.5, -min_w)
+			panel.offset_left = new_offset
+		elif edge.ends_with("Right"):
+			var new_right = _resize_start_right + dx
+			var min_right = panel.offset_left + min_w
+			new_right = clampf(new_right, min_right, -10.0)
+			panel.offset_right = new_right
+		elif edge.ends_with("Top"):
+			var new_top = _resize_start_top + dy
+			var bottom_in_top = viewport_size.y + panel.offset_bottom
+			new_top = clampf(new_top, 30.0, bottom_in_top - min_h)
+			panel.offset_top = new_top
+		elif edge.ends_with("Bottom"):
+			var new_bottom = _resize_start_bottom + dy
+			var min_bottom = panel.offset_top + min_h
+			new_bottom = clampf(new_bottom, min_bottom, viewport_size.y - 10.0)
+			panel.offset_bottom = new_bottom
 
 ## ====== 总览排序（点击表头切换） ======
 
@@ -609,25 +634,51 @@ func _on_overview_label_input(event: InputEvent, entry: Dictionary) -> void:
 		_on_overview_right_click(entry, event)
 
 func _on_overview_left_click(entry: Dictionary) -> void:
-	print("总览左键点击: ", entry.get("name", "?"))
 	var target_node = entry.get("node")
 	if not target_node or not is_instance_valid(target_node):
-		print("  节点无效")
 		player_ship.clear_camera_focus()
 		return
 	
-	# 飞船 → 锁定
-	if target_node is Ship:
-		player_ship.try_lock_ship(target_node)
-		add_message("锁定: " + entry.get("name", "未知"), Color(0.3, 0.8, 1))
-	# 小行星 → 接近
-	elif target_node is Asteroid:
-		player_ship.order_move_to(target_node.global_position)
-		add_message("接近: " + entry.get("name", "未知"), Color(0.5, 1, 0.5))
-	# 空间站 → 接近
-	elif target_node is Station:
-		player_ship.order_move_to(target_node.global_position)
-		add_message("接近: " + entry.get("name", "未知"), Color(0.3, 0.6, 1))
+	# 显示目标信息（不锁定）
+	_show_target_info(target_node)
+
+## 直接显示目标信息面板（不锁定目标）
+func _show_target_info(node: Node) -> void:
+	if not node or not is_instance_valid(node):
+		return
+	if not target_info_panel:
+		return
+	
+	_target_node = node
+	target_info_panel.show()
+	
+	var name_str = ""
+	if node is Ship:
+		name_str = node.ship_data.ship_name if node.ship_data else "未知飞船"
+		if target_type_label:
+			match node.faction:
+				Ship.Faction.NPC_HOSTILE:
+					target_type_label.text = "敌对"
+					target_type_label.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
+				Ship.Faction.NPC_FRIENDLY:
+					target_type_label.text = "友好"
+					target_type_label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
+				_:
+					target_type_label.text = "中立"
+					target_type_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	elif node is Asteroid:
+		name_str = node.ore_type + "小行星"
+		if target_type_label:
+			target_type_label.text = "小行星"
+			target_type_label.add_theme_color_override("font_color", Color(0.5, 1, 0.5))
+	elif node is Station:
+		name_str = node.station_name
+		if target_type_label:
+			target_type_label.text = "空间站"
+			target_type_label.add_theme_color_override("font_color", Color(0.3, 0.6, 1))
+	
+	if target_name_label:
+		target_name_label.text = name_str
 
 func _on_overview_right_click(entry: Dictionary, event: InputEventMouseButton) -> void:
 	var target_node = entry.get("node")
@@ -748,6 +799,45 @@ static func entry_name(node: Node) -> String:
 	if node is Station:
 		return node.station_name
 	return "目标"
+
+## ====== 面板布局保存/加载 ======
+
+const PANEL_SAVE_PATH: String = "user://panel_layout.cfg"
+
+func _save_panel_layout() -> void:
+	var cfg = ConfigFile.new()
+	var overview = get_node_or_null("OverviewPanel")
+	var target = get_node_or_null("TargetPanel")
+	if overview:
+		cfg.set_value("OverviewPanel", "offset_left", overview.offset_left)
+		cfg.set_value("OverviewPanel", "offset_top", overview.offset_top)
+		cfg.set_value("OverviewPanel", "offset_right", overview.offset_right)
+		cfg.set_value("OverviewPanel", "offset_bottom", overview.offset_bottom)
+	if target:
+		cfg.set_value("TargetPanel", "offset_left", target.offset_left)
+		cfg.set_value("TargetPanel", "offset_top", target.offset_top)
+		cfg.set_value("TargetPanel", "offset_right", target.offset_right)
+		cfg.set_value("TargetPanel", "offset_bottom", target.offset_bottom)
+	cfg.save(PANEL_SAVE_PATH)
+
+func _load_panel_layout() -> void:
+	var cfg = ConfigFile.new()
+	if cfg.load(PANEL_SAVE_PATH) != OK:
+		return
+	var overview = get_node_or_null("OverviewPanel")
+	var target = get_node_or_null("TargetPanel")
+	if overview:
+		if cfg.has_section_key("OverviewPanel", "offset_left"):
+			overview.offset_left = cfg.get_value("OverviewPanel", "offset_left")
+			overview.offset_top = cfg.get_value("OverviewPanel", "offset_top")
+			overview.offset_right = cfg.get_value("OverviewPanel", "offset_right")
+			overview.offset_bottom = cfg.get_value("OverviewPanel", "offset_bottom")
+	if target:
+		if cfg.has_section_key("TargetPanel", "offset_left"):
+			target.offset_left = cfg.get_value("TargetPanel", "offset_left")
+			target.offset_top = cfg.get_value("TargetPanel", "offset_top")
+			target.offset_right = cfg.get_value("TargetPanel", "offset_right")
+			target.offset_bottom = cfg.get_value("TargetPanel", "offset_bottom")
 
 ## ====== 消息与信息 ======
 

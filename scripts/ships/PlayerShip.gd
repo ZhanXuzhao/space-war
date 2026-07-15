@@ -121,6 +121,7 @@ func try_lock_ship(target: Ship) -> void:
 	
 	if target in locked_targets:
 		set_active_target(target)
+		target_locked.emit(target)
 	else:
 		lock_target(target)
 

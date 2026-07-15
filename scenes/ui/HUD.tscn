@@ -1,7 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://lmn06epvhh6c"]
 
-[ext_resource type="Script" path="res://scripts/ui/HUD.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/ui/OverviewContextMenu.gd" id="1_w3nhd"]
+[ext_resource type="Script" uid="uid://co2k46oea2x67" path="res://scripts/ui/HUD.gd" id="1"]
+[ext_resource type="Script" uid="uid://blbw7lmxyybfo" path="res://scripts/ui/OverviewContextMenu.gd" id="1_w3nhd"]
 
 [sub_resource type="StyleBoxFlat" id="bg_style"]
 bg_color = Color(0.1, 0.1, 0.15, 0.5)
@@ -27,8 +27,7 @@ bg_color = Color(0, 0, 0, 0.5)
 [sub_resource type="StyleBoxFlat" id="overview_header_bg"]
 bg_color = Color(0.15, 0.15, 0.2, 0.8)
 
-[node name="HUD" type="CanvasLayer"]
-layer = 1
+[node name="HUD" type="CanvasLayer" unique_id=1924590340]
 script = ExtResource("1")
 shield_bar = NodePath("ShipStatusPanel/ShieldBar")
 armor_bar = NodePath("ShipStatusPanel/ArmorBar")
@@ -38,11 +37,11 @@ speed_label = NodePath("ShipStatusPanel/SpeedLabel")
 ship_name_label = NodePath("ShipStatusPanel/ShipName")
 target_info_panel = NodePath("TargetPanel")
 target_name_label = NodePath("TargetPanel/TargetName")
+target_type_label = NodePath("TargetPanel/TargetType")
+target_dist_label = NodePath("TargetPanel/TargetDistLabel")
 target_shield_bar = NodePath("TargetPanel/TargetShieldBar")
 target_armor_bar = NodePath("TargetPanel/TargetArmorBar")
 target_hull_bar = NodePath("TargetPanel/TargetHullBar")
-target_type_label = NodePath("TargetPanel/TargetType")
-target_dist_label = NodePath("TargetPanel/TargetDistLabel")
 btn_approach = NodePath("TargetPanel/BtnApproach")
 btn_orbit = NodePath("TargetPanel/BtnOrbit")
 btn_warp = NodePath("TargetPanel/BtnWarp")
@@ -51,399 +50,430 @@ capacitor_text_label = NodePath("ShipStatusPanel/CapacitorLabel")
 isk_label = NodePath("TopBar/ISKLabel")
 location_label = NodePath("TopBar/LocationLabel")
 message_log = NodePath("MessageLog")
-spawn_button = NodePath("SpawnButton")
 context_menu = NodePath("OverviewContextMenu")
+spawn_button = NodePath("SpawnButton")
 
-[node name="ShipStatusPanel" type="Panel" parent="."]
-anchor_left = 0.0
-anchor_right = 0.0
+[node name="ShipStatusPanel" type="Panel" parent="." unique_id=724607298]
+anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 10.0
-offset_right = 250.0
 offset_top = -250.0
+offset_right = 250.0
 offset_bottom = -10.0
 
-[node name="ShipName" type="Label" parent="ShipStatusPanel"]
+[node name="ShipName" type="Label" parent="ShipStatusPanel" unique_id=2012399882]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 5.0
 offset_right = 240.0
 offset_bottom = 25.0
-text = "秃鹫级"
 theme_override_colors/font_color = Color(0, 0.8, 1, 1)
+text = "秃鹫级"
 
-[node name="ShieldLabel" type="Label" parent="ShipStatusPanel"]
+[node name="ShieldLabel" type="Label" parent="ShipStatusPanel" unique_id=2060220380]
+layout_mode = 0
 offset_left = 35.0
 offset_top = 30.0
 offset_right = 240.0
 offset_bottom = 45.0
-text = "800 / 800"
 theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+text = "800 / 800"
 
-[node name="ShieldBar" type="ProgressBar" parent="ShipStatusPanel"]
+[node name="ShieldBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=241923400]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 45.0
 offset_right = 240.0
 offset_bottom = 60.0
-max_value = 100.0
-value = 100.0
-show_percentage = false
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("shield_fill")
+value = 100.0
+show_percentage = false
 
-[node name="ArmorLabel" type="Label" parent="ShipStatusPanel"]
+[node name="ArmorLabel" type="Label" parent="ShipStatusPanel" unique_id=340187583]
+layout_mode = 0
 offset_left = 35.0
 offset_top = 65.0
 offset_right = 240.0
 offset_bottom = 80.0
-text = "600 / 600"
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+text = "600 / 600"
 
-[node name="ArmorBar" type="ProgressBar" parent="ShipStatusPanel"]
+[node name="ArmorBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=1428167785]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 80.0
 offset_right = 240.0
 offset_bottom = 95.0
-max_value = 100.0
-value = 100.0
-show_percentage = false
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("armor_fill")
+value = 100.0
+show_percentage = false
 
-[node name="HullLabel" type="Label" parent="ShipStatusPanel"]
+[node name="HullLabel" type="Label" parent="ShipStatusPanel" unique_id=407899098]
+layout_mode = 0
 offset_left = 35.0
 offset_top = 100.0
 offset_right = 240.0
 offset_bottom = 115.0
-text = "800 / 800"
 theme_override_colors/font_color = Color(1, 0.5, 0.2, 1)
+text = "800 / 800"
 
-[node name="HullBar" type="ProgressBar" parent="ShipStatusPanel"]
+[node name="HullBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=1606116976]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 115.0
 offset_right = 240.0
 offset_bottom = 130.0
-max_value = 100.0
-value = 100.0
-show_percentage = false
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("hull_fill")
+value = 100.0
+show_percentage = false
 
-[node name="CapacitorLabel" type="Label" parent="ShipStatusPanel"]
+[node name="CapacitorLabel" type="Label" parent="ShipStatusPanel" unique_id=2121360874]
+layout_mode = 0
 offset_left = 35.0
 offset_top = 135.0
 offset_right = 240.0
 offset_bottom = 150.0
-text = "400 / 400"
 theme_override_colors/font_color = Color(0.2, 0.8, 1, 1)
+text = "400 / 400"
 
-[node name="CapacitorBar" type="ProgressBar" parent="ShipStatusPanel"]
+[node name="CapacitorBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=820649455]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 150.0
 offset_right = 240.0
 offset_bottom = 165.0
-max_value = 100.0
-value = 100.0
-show_percentage = false
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("cap_fill")
+value = 100.0
+show_percentage = false
 
-[node name="SpeedLabel" type="Label" parent="ShipStatusPanel"]
+[node name="SpeedLabel" type="Label" parent="ShipStatusPanel" unique_id=994489443]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 175.0
 offset_right = 240.0
 offset_bottom = 195.0
-text = "速度: 0 m/s"
 theme_override_colors/font_color = Color(0, 1, 0.5, 1)
+text = "速度: 0 m/s"
 
-[node name="TargetPanel" type="Panel" parent="."]
+[node name="TargetPanel" type="Panel" parent="." unique_id=1979316714]
 visible = false
+anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-anchor_top = 0.0
-anchor_bottom = 0.0
 offset_left = -260.0
-offset_right = -10.0
 offset_top = 10.0
+offset_right = -10.0
 offset_bottom = 300.0
 
-[node name="TargetType" type="Label" parent="TargetPanel"]
+[node name="THandleLeft" type="Control" parent="TargetPanel"]
+anchors_preset = 0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_right = 4.0
+mouse_default_cursor_shape = 10
+
+[node name="THandleRight" type="Control" parent="TargetPanel"]
+anchors_preset = 0
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_right = 4.0
+mouse_default_cursor_shape = 10
+
+[node name="THandleTop" type="Control" parent="TargetPanel"]
+anchors_preset = 0
+anchor_right = 1.0
+offset_top = -4.0
+offset_bottom = 4.0
+mouse_default_cursor_shape = 9
+
+[node name="THandleBottom" type="Control" parent="TargetPanel"]
+anchors_preset = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -4.0
+offset_bottom = 4.0
+mouse_default_cursor_shape = 9
+
+[node name="TargetType" type="Label" parent="TargetPanel" unique_id=528214472]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 5.0
 offset_right = 240.0
 offset_bottom = 20.0
-text = "敌对"
 theme_override_colors/font_color = Color(1, 0.5, 0.2, 1)
 theme_override_font_sizes/font_size = 10
+text = "敌对"
 
-[node name="TargetName" type="Label" parent="TargetPanel"]
+[node name="TargetName" type="Label" parent="TargetPanel" unique_id=934681927]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 20.0
 offset_right = 240.0
 offset_bottom = 40.0
-text = "目标: 无"
 theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
+text = "目标: 无"
 
-[node name="TargetDistLabel" type="Label" parent="TargetPanel"]
+[node name="TargetDistLabel" type="Label" parent="TargetPanel" unique_id=1253235083]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 42.0
 offset_right = 240.0
 offset_bottom = 57.0
-text = "距离: --"
 theme_override_colors/font_color = Color(0.6, 0.6, 0.7, 1)
 theme_override_font_sizes/font_size = 10
+text = "距离: --"
 
-[node name="TargetShieldBar" type="ProgressBar" parent="TargetPanel"]
+[node name="TargetShieldBar" type="ProgressBar" parent="TargetPanel" unique_id=984926032]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 65.0
 offset_right = 240.0
 offset_bottom = 80.0
-max_value = 100.0
-value = 100.0
-show_percentage = false
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("shield_fill")
+value = 100.0
+show_percentage = false
 
-[node name="TargetArmorBar" type="ProgressBar" parent="TargetPanel"]
+[node name="TargetArmorBar" type="ProgressBar" parent="TargetPanel" unique_id=666080436]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 85.0
 offset_right = 240.0
 offset_bottom = 100.0
-max_value = 100.0
-value = 100.0
-show_percentage = false
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("armor_fill")
+value = 100.0
+show_percentage = false
 
-[node name="TargetHullBar" type="ProgressBar" parent="TargetPanel"]
+[node name="TargetHullBar" type="ProgressBar" parent="TargetPanel" unique_id=6145813]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 105.0
 offset_right = 240.0
 offset_bottom = 120.0
-max_value = 100.0
-value = 100.0
-show_percentage = false
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("hull_fill")
+value = 100.0
+show_percentage = false
 
-[node name="BtnApproach" type="Button" parent="TargetPanel"]
+[node name="BtnApproach" type="Button" parent="TargetPanel" unique_id=1616262209]
+layout_mode = 0
 offset_left = 5.0
 offset_top = 130.0
 offset_right = 78.0
 offset_bottom = 150.0
-text = "靠近"
 theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
 theme_override_colors/font_hover_color = Color(0.5, 1, 1, 1)
 theme_override_font_sizes/font_size = 11
+text = "靠近"
 
-[node name="BtnOrbit" type="Button" parent="TargetPanel"]
+[node name="BtnOrbit" type="Button" parent="TargetPanel" unique_id=1840891132]
+layout_mode = 0
 offset_left = 83.0
 offset_top = 130.0
 offset_right = 156.0
 offset_bottom = 150.0
-text = "环绕"
 theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
 theme_override_colors/font_hover_color = Color(0.5, 1, 1, 1)
 theme_override_font_sizes/font_size = 11
+text = "环绕"
 
-[node name="BtnWarp" type="Button" parent="TargetPanel"]
+[node name="BtnWarp" type="Button" parent="TargetPanel" unique_id=780101151]
+layout_mode = 0
 offset_left = 161.0
 offset_top = 130.0
 offset_right = 244.0
 offset_bottom = 150.0
-text = "跃迁"
 theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
 theme_override_colors/font_hover_color = Color(0.5, 1, 1, 1)
 theme_override_font_sizes/font_size = 11
+text = "跃迁"
 
-[node name="TopBar" type="Panel" parent="."]
-anchor_left = 0.0
+[node name="TopBar" type="Panel" parent="." unique_id=1006633197]
+anchors_preset = 10
 anchor_right = 1.0
-anchor_top = 0.0
-anchor_bottom = 0.0
-offset_right = 0.0
 offset_bottom = 30.0
 theme_override_styles/panel = SubResource("topbar_style")
 
-[node name="LocationLabel" type="Label" parent="TopBar"]
+[node name="LocationLabel" type="Label" parent="TopBar" unique_id=1266747231]
+layout_mode = 0
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -150.0
-offset_right = 150.0
 offset_top = 5.0
+offset_right = 150.0
 offset_bottom = 25.0
-horizontal_alignment = 1
-text = "加达里星门"
 theme_override_colors/font_color = Color(0.8, 0.8, 1, 1)
+text = "加达里星门"
+horizontal_alignment = 1
 
-[node name="ISKLabel" type="Label" parent="TopBar"]
+[node name="ISKLabel" type="Label" parent="TopBar" unique_id=992268502]
+layout_mode = 0
 anchor_right = 1.0
 offset_left = 10.0
+offset_top = 5.0
 offset_right = -10.0
-offset_top = 5.0
 offset_bottom = 25.0
-horizontal_alignment = 2
-text = "ISK: 50,000"
 theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
+text = "ISK: 50,000"
+horizontal_alignment = 2
 
-[node name="CamDistLabel" type="Label" parent="TopBar"]
+[node name="CamDistLabel" type="Label" parent="TopBar" unique_id=733508391]
+layout_mode = 0
 offset_left = 5.0
-offset_right = 180.0
 offset_top = 5.0
+offset_right = 180.0
 offset_bottom = 25.0
-horizontal_alignment = 0
-text = "---"
 theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 0.8)
 theme_override_font_sizes/font_size = 10
+text = "---"
 
-[node name="OverviewPanel" type="Panel" parent="."]
+[node name="OverviewPanel" type="Panel" parent="." unique_id=1840853210]
+anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
-anchor_top = 0.0
 anchor_bottom = 1.0
 offset_left = -320.0
-offset_right = -10.0
 offset_top = 210.0
+offset_right = -10.0
 offset_bottom = -10.0
 theme_override_styles/panel = SubResource("overview_bg")
 
-[node name="HandleLeft" type="Control" parent="OverviewPanel"]
-offset_left = -4.0
-offset_right = 4.0
-offset_top = 0.0
-offset_bottom = 0.0
+[node name="HandleLeft" type="Control" parent="OverviewPanel" unique_id=1959191659]
+anchors_preset = 0
 anchor_bottom = 1.0
-mouse_default_cursor_shape = 13
-
-[node name="HandleRight" type="Control" parent="OverviewPanel"]
 offset_left = -4.0
 offset_right = 4.0
-offset_top = 0.0
-offset_bottom = 0.0
+mouse_default_cursor_shape = 10
+
+[node name="HandleRight" type="Control" parent="OverviewPanel" unique_id=994366313]
+anchors_preset = 0
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-mouse_default_cursor_shape = 13
+offset_left = -4.0
+offset_right = 4.0
+mouse_default_cursor_shape = 10
 
-[node name="HandleTop" type="Control" parent="OverviewPanel"]
-offset_left = 0.0
-offset_right = 0.0
+[node name="HandleTop" type="Control" parent="OverviewPanel" unique_id=1444129937]
+anchors_preset = 0
+anchor_right = 1.0
 offset_top = -4.0
 offset_bottom = 4.0
-anchor_right = 1.0
-mouse_default_cursor_shape = 11
+mouse_default_cursor_shape = 9
 
-[node name="HandleBottom" type="Control" parent="OverviewPanel"]
-offset_left = 0.0
-offset_right = 0.0
-offset_top = -4.0
-offset_bottom = 4.0
-anchor_right = 1.0
+[node name="HandleBottom" type="Control" parent="OverviewPanel" unique_id=1291828645]
+anchors_preset = 0
 anchor_top = 1.0
-anchor_bottom = 1.0
-mouse_default_cursor_shape = 11
-
-[node name="HeaderBg" type="Panel" parent="OverviewPanel"]
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 0.0
-offset_bottom = 28.0
 anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -4.0
+offset_bottom = 4.0
+mouse_default_cursor_shape = 9
+
+[node name="HeaderBg" type="Panel" parent="OverviewPanel" unique_id=837384747]
+layout_mode = 0
+anchor_right = 1.0
+offset_bottom = 28.0
 theme_override_styles/panel = SubResource("overview_header_bg")
 
-[node name="HeaderLabel" type="Label" parent="OverviewPanel/HeaderBg"]
+[node name="HeaderLabel" type="Label" parent="OverviewPanel/HeaderBg" unique_id=170090683]
+layout_mode = 0
+anchor_right = 1.0
 offset_left = 5.0
 offset_top = 4.0
 offset_right = -5.0
 offset_bottom = 24.0
-anchor_right = 1.0
-text = "总  览"
 theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+text = "总  览"
 
-[node name="ColumnHeader" type="HBoxContainer" parent="OverviewPanel"]
+[node name="ColumnHeader" type="HBoxContainer" parent="OverviewPanel" unique_id=434572431]
+layout_mode = 0
+anchor_right = 1.0
 offset_left = 5.0
 offset_top = 32.0
 offset_right = -5.0
 offset_bottom = 52.0
-anchor_right = 1.0
 
-[node name="NameHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
-offset_bottom = 20.0
-size_flags_horizontal = 3
+[node name="NameHeader" type="Label" parent="OverviewPanel/ColumnHeader" unique_id=801126609]
 custom_minimum_size = Vector2(60, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 10
 text = "名称"
+
+[node name="DistHeader" type="Label" parent="OverviewPanel/ColumnHeader" unique_id=869652708]
+custom_minimum_size = Vector2(50, 20)
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 10
-
-[node name="DistHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
-offset_bottom = 20.0
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(50, 20)
 text = "距离"
+
+[node name="SpeedHeader" type="Label" parent="OverviewPanel/ColumnHeader" unique_id=1194261916]
+custom_minimum_size = Vector2(50, 20)
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 10
-
-[node name="SpeedHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
-offset_bottom = 20.0
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(50, 20)
 text = "速度"
-theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
-theme_override_font_sizes/font_size = 10
 
-[node name="TypeHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
-offset_bottom = 20.0
-size_flags_horizontal = 3
+[node name="TypeHeader" type="Label" parent="OverviewPanel/ColumnHeader" unique_id=2143112665]
 custom_minimum_size = Vector2(50, 20)
-text = "类型"
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 10
+text = "类型"
 
-[node name="ScrollContainer" type="ScrollContainer" parent="OverviewPanel"]
-offset_left = 0.0
-offset_top = 55.0
-offset_right = 0.0
-offset_bottom = 0.0
+[node name="ScrollContainer" type="ScrollContainer" parent="OverviewPanel" unique_id=387079598]
+layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_top = 55.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="OverviewList" type="VBoxContainer" parent="OverviewPanel/ScrollContainer"]
-offset_left = 0.0
-offset_right = 0.0
-offset_bottom = 0.0
+[node name="OverviewList" type="VBoxContainer" parent="OverviewPanel/ScrollContainer" unique_id=1853272000]
+layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="SpawnButton" type="Button" parent="."]
+[node name="SpawnButton" type="Button" parent="." unique_id=1968127148]
+anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
+anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -100.0
-offset_right = 100.0
 offset_top = -110.0
+offset_right = 100.0
 offset_bottom = -80.0
-text = "召唤敌舰"
 theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
-theme_override_colors/font_hover_color = Color(0.5, 0.8, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 0.3, 0.3, 1)
+theme_override_colors/font_hover_color = Color(0.5, 0.8, 1, 1)
+text = "召唤敌舰"
 
-
-
-[node name="MessageLog" type="RichTextLabel" parent="."]
+[node name="MessageLog" type="RichTextLabel" parent="." unique_id=2108244219]
+anchors_preset = -1
 anchor_left = 0.5
-anchor_right = 1.0
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -400.0
-offset_right = -10.0
 offset_top = -200.0
+offset_right = -10.0
 offset_bottom = -10.0
 theme_override_colors/default_color = Color(0.7, 0.7, 0.7, 0.7)
 
-[node name="OverviewContextMenu" type="PopupMenu" parent="."]
+[node name="OverviewContextMenu" type="PopupMenu" parent="." unique_id=1187790722]
 script = ExtResource("1_w3nhd")
-scroll_active = false
-bbcode_enabled = true
-fit_content_height = true
