@@ -3,18 +3,22 @@
 [ext_resource type="PackedScene" uid="uid://c8m84j1qo5sd8" path="res://scenes/player/PlayerShip.tscn" id="1"]
 [ext_resource type="PackedScene" uid="uid://d20i3004nq1fd" path="res://scenes/world/StarSystem.tscn" id="2"]
 [ext_resource type="PackedScene" uid="uid://bwxl37j1p345b" path="res://scenes/ui/HUD.tscn" id="3"]
-[ext_resource type="Texture2D" path="res://textures/skybox/space_panorama.png" id="4"]
+[ext_resource type="Texture2D" uid="uid://yleopvo8urrl" path="res://textures/skybox/space_panorama.png" id="4"]
 
-[sub_resource type="PanoramaSky" id="sky"]
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_1bvp3"]
 panorama = ExtResource("4")
 
+[sub_resource type="Sky" id="sky"]
+resource_local_to_scene = true
+sky_material = SubResource("PanoramaSkyMaterial_1bvp3")
+
 [sub_resource type="Environment" id="env"]
-background_mode = 0
-background_color = Color(0, 0, 0.05, 1)
+background_mode = 2
+background_color = Color(1.92523e-06, 0.840043, 0.8011733, 1)
+sky = SubResource("sky")
 ambient_light_source = 2
 ambient_light_color = Color(0.3, 0.3, 0.4, 1)
 tonemap_mode = 3
-sky = SubResource("sky")
 
 [node name="SpaceWar" type="Node3D" unique_id=1316219793]
 

@@ -130,24 +130,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-        return
-
-    filename = image_info["filename"]
-    subfolder = image_info["subfolder"]
-    folder_type = image_info["type"]
-
-    print(f"📷 下载图片: {filename}")
-
-    # 5. 下载图片
-    img_data = download_image(filename, subfolder, folder_type)
-
-    # 6. 保存到项目目录
-    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    with open(OUTPUT_PATH, "wb") as f:
-        f.write(img_data)
-    print(f"💾 已保存到: {OUTPUT_PATH}")
-    print(f"   ({len(img_data) / 1024:.0f} KB)")
-
-
-if __name__ == "__main__":
-    main()
