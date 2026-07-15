@@ -8,7 +8,7 @@ enum AIState { IDLE, PATROL, ENGAGE, FLEE, MINE, RETURN }
 
 @export var detection_range: float = 15000.0  # 探测范围
 @export var engagement_range: float = 2000.0  # 接战距离
-@export var orbit_range: float = 1500.0  # 环绕距离
+@export var orbit_range: float = 1200.0  # 环绕距离 = 武器射程 1500m × 80%
 @export var flee_shield_percent: float = 25.0  # 逃跑护盾阈值
 @export var patrol_points: Array[Vector3] = []
 @export var aggro_chance: float = 0.8  # 主动攻击概率

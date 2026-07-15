@@ -51,12 +51,16 @@ var mid_slot_modules: Array[Node] = []
 var low_slot_modules: Array[Node] = []
 var weapon_nodes: Array[Node] = []
 
+## 速度箭头
+var _velocity_arrow: MeshInstance3D
+
 ## 阵营
 enum Faction { PLAYER, NPC_FRIENDLY, NPC_HOSTILE, NEUTRAL }
 @export var faction: Faction = Faction.NEUTRAL
 
 func _ready() -> void:
 	_init_stats()
+	_setup_velocity_arrow()
 
 func _init_stats() -> void:
 	current_shield = max_shield
@@ -64,10 +68,45 @@ func _init_stats() -> void:
 	current_hull = max_hull
 	current_capacitor = max_capacitor
 
+## 创建速度箭头（绿色锥体，方向朝前，长度随速度变化）
+func _setup_velocity_arrow() -> void:
+	var cone = CylinderMesh.new()
+	cone.top_radius = 0.0
+	cone.bottom_radius = 5.0
+	cone.height = 25.0
+	
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.0, 1.0, 0.2)
+	mat.emission_enabled = true
+	mat.emission = Color(0.0, 1.0, 0.2)
+	mat.emission_energy_multiplier = 0.5
+	cone.material = mat
+	
+	_velocity_arrow = MeshInstance3D.new()
+	_velocity_arrow.mesh = cone
+	# ConeMesh 默认朝 +Y，旋转使其朝 -Z（飞船前进方向）
+	_velocity_arrow.rotate_x(deg_to_rad(90.0))
+	# 放在飞船前方（飞船长300m，前端在z=-150）
+	_velocity_arrow.position.z = -180.0
+	add_child(_velocity_arrow)
+
 func _process(delta: float) -> void:
 	if not is_alive:
 		return
 	_recharge_capacitor(delta)
+	_update_velocity_arrow()
+
+## 更新速度箭头：速度越快箭头越长
+func _update_velocity_arrow() -> void:
+	if not _velocity_arrow:
+		return
+	var speed_ratio = clampf(current_speed / max_speed, 0.0, 1.0)
+	# 最小为 0.1（静止时可见小点），最大为 1.0（全速）
+	var scale_len = 0.1 + speed_ratio * 0.9
+	_velocity_arrow.scale.z = scale_len
+	_velocity_arrow.scale.x = 0.3 + speed_ratio * 0.7
+	_velocity_arrow.scale.y = 0.3 + speed_ratio * 0.7
+	_velocity_arrow.visible = speed_ratio > 0.01
 
 func _physics_process(delta: float) -> void:
 	if not is_alive:

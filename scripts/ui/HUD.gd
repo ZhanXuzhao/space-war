@@ -35,6 +35,16 @@ var player_ship: PlayerShip = null
 var global_ref: Node
 var enemy_spawner: EnemySpawner = null
 var _target_node: Node = null  # 当前目标面板显示的节点
+var _is_resizing: bool = false
+var _resize_start_x: float = 0.0
+var _resize_start_y: float = 0.0
+var _resize_start_offset: float = 0.0
+var _resize_start_right: float = 0.0
+var _resize_start_top: float = 0.0
+var _resize_start_bottom: float = 0.0
+var _is_dragging_panel: bool = false
+var _drag_start_mouse: Vector2 = Vector2.ZERO
+var _drag_start_panel_offset: Vector2 = Vector2.ZERO
 
 ## 总览更新
 var overview_update_timer: float = 0.0
@@ -68,6 +78,22 @@ func _ready() -> void:
 	btn_orbit = get_node_or_null("TargetPanel/BtnOrbit") as Button
 	btn_warp = get_node_or_null("TargetPanel/BtnWarp") as Button
 	cam_dist_label = get_node_or_null("TopBar/CamDistLabel") as Label
+	# 手动查找速度标签（场景 NodePath 绑定不生效）
+	if not speed_label:
+		speed_label = get_node_or_null("ShipStatusPanel/SpeedLabel") as Label
+	
+	# 总览面板四边拖拽缩放
+	for edge in ["HandleLeft", "HandleRight", "HandleTop", "HandleBottom"]:
+		var h = get_node_or_null("OverviewPanel/" + edge)
+		if h:
+			h.gui_input.connect(_on_resize_handle_input.bind(edge))
+	
+	# 总览面板标题栏拖拽移动
+	var header = get_node_or_null("OverviewPanel/HeaderBg")
+	if header:
+		header.mouse_filter = Control.MOUSE_FILTER_STOP
+		header.gui_input.connect(_on_header_drag_input)
+	
 	# 总览空白区域点击 → 清除相机锁定
 	if overview_list:
 		overview_list.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -355,28 +381,27 @@ func _refresh_overview_list(entries: Array[Dictionary]) -> void:
 		var name_label = Label.new()
 		name_label.text = entry["name"]
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_label.custom_minimum_size = Vector2(100, 20)
 		name_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.9, 1))
 		name_label.add_theme_font_size_override("font_size", 10)
 		
 		# 距离
 		var dist_label = Label.new()
 		dist_label.text = _format_distance(entry["distance"])
-		dist_label.custom_minimum_size = Vector2(65, 20)
+		dist_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		dist_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7, 1))
 		dist_label.add_theme_font_size_override("font_size", 10)
 		
 		# 速度
 		var speed_label = Label.new()
 		speed_label.text = _format_speed(entry["speed"])
-		speed_label.custom_minimum_size = Vector2(60, 20)
+		speed_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		speed_label.add_theme_color_override("font_color", Color(0.3, 1, 0.5, 1))
 		speed_label.add_theme_font_size_override("font_size", 10)
 		
 		# 类型
 		var type_label = Label.new()
 		type_label.text = entry["type"]
-		type_label.custom_minimum_size = Vector2(60, 20)
+		type_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		type_label.add_theme_font_size_override("font_size", 10)
 		match entry["type"]:
 			"飞船":
@@ -420,6 +445,79 @@ static func _format_distance(distance: float) -> String:
 		return "%d m" % distance
 	else:
 		return "%d m" % distance
+
+## ====== 总览面板标题栏拖拽 ======
+
+func _on_header_drag_input(event: InputEvent) -> void:
+	var panel = get_node_or_null("OverviewPanel")
+	if not panel:
+		return
+	
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_is_dragging_panel = true
+			_drag_start_mouse = get_viewport().get_mouse_position()
+			_drag_start_panel_offset = Vector2(panel.offset_left, panel.offset_top)
+		else:
+			_is_dragging_panel = false
+	
+	if event is InputEventMouseMotion and _is_dragging_panel:
+		var mouse_pos = get_viewport().get_mouse_position()
+		var delta = mouse_pos - _drag_start_mouse
+		# offset_left 和 offset_right 同时移动相同距离，保持宽度不变
+		var panel_width = panel.offset_right - panel.offset_left
+		panel.offset_left = _drag_start_panel_offset.x + delta.x
+		panel.offset_right = panel.offset_left + panel_width
+		panel.offset_top = _drag_start_panel_offset.y + delta.y
+
+## ====== 总览面板四边拖拽缩放 ======
+
+func _on_resize_handle_input(event: InputEvent, edge: String) -> void:
+	var panel = get_node_or_null("OverviewPanel")
+	if not panel:
+		return
+	
+	var viewport_size = get_viewport().get_visible_rect().size
+	
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_is_resizing = true
+			var mpos = get_viewport().get_mouse_position()
+			_resize_start_x = mpos.x
+			_resize_start_y = mpos.y
+			_resize_start_offset = panel.offset_left
+			_resize_start_right = panel.offset_right
+			_resize_start_top = panel.offset_top
+			_resize_start_bottom = panel.offset_bottom
+		else:
+			_is_resizing = false
+	
+	if event is InputEventMouseMotion and _is_resizing:
+		var mpos = get_viewport().get_mouse_position()
+		var dx = mpos.x - _resize_start_x
+		var dy = mpos.y - _resize_start_y
+		
+		match edge:
+			"HandleLeft":
+				var new_offset = _resize_start_offset + dx
+				new_offset = clampf(new_offset, -viewport_size.x * 0.5, -150.0)
+				panel.offset_left = new_offset
+			"HandleRight":
+				var new_right = _resize_start_right + dx
+				var min_right = panel.offset_left + 150.0
+				new_right = clampf(new_right, min_right, -10.0)
+				panel.offset_right = new_right
+			"HandleTop":
+				var new_top = _resize_start_top + dy
+				# offset_bottom 是相对父节点底边，需转为相对顶边的坐标
+				var bottom_in_top = viewport_size.y + panel.offset_bottom
+				new_top = clampf(new_top, 30.0, bottom_in_top - 100.0)
+				panel.offset_top = new_top
+			"HandleBottom":
+				var new_bottom = _resize_start_bottom + dy
+				var min_bottom = panel.offset_top + 100.0
+				new_bottom = clampf(new_bottom, min_bottom, viewport_size.y - 10.0)
+				panel.offset_bottom = new_bottom
 
 ## ====== 总览排序（点击表头切换） ======
 

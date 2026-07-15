@@ -307,58 +307,94 @@ offset_top = 210.0
 offset_bottom = -10.0
 theme_override_styles/panel = SubResource("overview_bg")
 
+[node name="HandleLeft" type="Control" parent="OverviewPanel"]
+offset_left = -4.0
+offset_right = 4.0
+offset_top = 0.0
+offset_bottom = 0.0
+anchor_bottom = 1.0
+mouse_default_cursor_shape = 13
+
+[node name="HandleRight" type="Control" parent="OverviewPanel"]
+offset_left = -4.0
+offset_right = 4.0
+offset_top = 0.0
+offset_bottom = 0.0
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_default_cursor_shape = 13
+
+[node name="HandleTop" type="Control" parent="OverviewPanel"]
+offset_left = 0.0
+offset_right = 0.0
+offset_top = -4.0
+offset_bottom = 4.0
+anchor_right = 1.0
+mouse_default_cursor_shape = 11
+
+[node name="HandleBottom" type="Control" parent="OverviewPanel"]
+offset_left = 0.0
+offset_right = 0.0
+offset_top = -4.0
+offset_bottom = 4.0
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+mouse_default_cursor_shape = 11
+
 [node name="HeaderBg" type="Panel" parent="OverviewPanel"]
 offset_left = 0.0
 offset_top = 0.0
-offset_right = 310.0
+offset_right = 0.0
 offset_bottom = 28.0
+anchor_right = 1.0
 theme_override_styles/panel = SubResource("overview_header_bg")
 
 [node name="HeaderLabel" type="Label" parent="OverviewPanel/HeaderBg"]
 offset_left = 5.0
 offset_top = 4.0
-offset_right = 300.0
+offset_right = -5.0
 offset_bottom = 24.0
+anchor_right = 1.0
 text = "总  览"
 theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
 
 [node name="ColumnHeader" type="HBoxContainer" parent="OverviewPanel"]
 offset_left = 5.0
 offset_top = 32.0
-offset_right = 305.0
+offset_right = -5.0
 offset_bottom = 52.0
+anchor_right = 1.0
 
 [node name="NameHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
-offset_right = 120.0
 offset_bottom = 20.0
-custom_minimum_size = Vector2(120, 20)
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(60, 20)
 text = "名称"
 theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 10
 
 [node name="DistHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
-offset_left = 104.0
-offset_right = 176.0
 offset_bottom = 20.0
-custom_minimum_size = Vector2(65, 20)
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(50, 20)
 text = "距离"
 theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 10
 
 [node name="SpeedHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
-offset_left = 180.0
-offset_right = 246.0
 offset_bottom = 20.0
-custom_minimum_size = Vector2(60, 20)
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(50, 20)
 text = "速度"
 theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 10
 
 [node name="TypeHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
-offset_left = 250.0
-offset_right = 310.0
 offset_bottom = 20.0
-custom_minimum_size = Vector2(60, 20)
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(50, 20)
 text = "类型"
 theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 10
