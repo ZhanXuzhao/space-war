@@ -39,6 +39,10 @@ weapon_group_1={
 }]
 }
 
+[display]
+
+window/size/mode=2
+
 [autoload]
 
 Global="*res://autoload/Global.gd"

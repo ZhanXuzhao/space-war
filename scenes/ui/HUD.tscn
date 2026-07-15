@@ -20,6 +20,12 @@ bg_color = Color(0.1, 0.5, 0.9, 0.8)
 [sub_resource type="StyleBoxFlat" id="topbar_style"]
 bg_color = Color(0, 0, 0, 0.6)
 
+[sub_resource type="StyleBoxFlat" id="overview_bg"]
+bg_color = Color(0, 0, 0, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="overview_header_bg"]
+bg_color = Color(0.15, 0.15, 0.2, 0.8)
+
 [node name="HUD" type="CanvasLayer"]
 layer = 1
 script = ExtResource("1")
@@ -207,6 +213,80 @@ offset_bottom = 25.0
 horizontal_alignment = 2
 text = "ISK: 50,000"
 theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
+
+[node name="OverviewPanel" type="Panel" parent="."]
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_top = 0.0
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_right = -10.0
+offset_top = 210.0
+offset_bottom = -10.0
+theme_override_styles/panel = SubResource("overview_bg")
+
+[node name="HeaderBg" type="Panel" parent="OverviewPanel"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 310.0
+offset_bottom = 28.0
+theme_override_styles/panel = SubResource("overview_header_bg")
+
+[node name="HeaderLabel" type="Label" parent="OverviewPanel/HeaderBg"]
+offset_left = 5.0
+offset_top = 4.0
+offset_right = 300.0
+offset_bottom = 24.0
+text = "总  览"
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+
+[node name="ColumnHeader" type="HBoxContainer" parent="OverviewPanel"]
+offset_left = 5.0
+offset_top = 32.0
+offset_right = 305.0
+offset_bottom = 52.0
+
+[node name="NameHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
+offset_right = 120.0
+offset_bottom = 20.0
+custom_minimum_size = Vector2(120, 20)
+text = "名称"
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="DistHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
+offset_left = 124.0
+offset_right = 220.0
+offset_bottom = 20.0
+custom_minimum_size = Vector2(80, 20)
+text = "距离"
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="TypeHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
+offset_left = 208.0
+offset_right = 300.0
+offset_bottom = 20.0
+custom_minimum_size = Vector2(80, 20)
+text = "类型"
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="ScrollContainer" type="ScrollContainer" parent="OverviewPanel"]
+offset_left = 0.0
+offset_top = 55.0
+offset_right = 310.0
+offset_bottom = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="OverviewList" type="VBoxContainer" parent="OverviewPanel/ScrollContainer"]
+offset_right = 310.0
+offset_bottom = 20.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
 
 [node name="MessageLog" type="RichTextLabel" parent="."]
 anchor_left = 0.5

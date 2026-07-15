@@ -26,6 +26,12 @@ class_name HUD
 var player_ship: PlayerShip = null
 var global_ref: Node
 
+## 总览更新
+var overview_update_timer: float = 0.0
+const OVERVIEW_UPDATE_INTERVAL: float = 1.0  # 每秒更新一次
+const OVERVIEW_MAX_ENTRIES: int = 20
+const OVERVIEW_MAX_RANGE: float = 100000.0  # 最大探测范围
+
 func _ready() -> void:
 	global_ref = get_node("/root/Global")
 	await get_tree().process_frame
@@ -39,6 +45,7 @@ func _ready() -> void:
 	
 	_update_isk_display()
 	_update_location_display()
+	_update_overview()
 
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
@@ -58,9 +65,15 @@ func _connect_ship_signals() -> void:
 	
 	_update_all()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if player_ship and is_inside_tree():
 		_update_speed()
+	
+	# 定时更新总览
+	overview_update_timer += delta
+	if overview_update_timer >= OVERVIEW_UPDATE_INTERVAL:
+		overview_update_timer = 0.0
+		_update_overview()
 
 ## ====== 飞船状态更新 ======
 
@@ -140,10 +153,133 @@ func _update_target_hull(current: float, max_value: float) -> void:
 	if target_hull_bar:
 		target_hull_bar.value = (current / max_value) * 100.0 if max_value > 0 else 0.0
 
-## ====== 全景扫描 ======
+## ====== 总览列表（附近飞船、天体） ======
 
 func _update_overview() -> void:
-	pass
+	if not player_ship or not is_inside_tree():
+		return
+	
+	var player_pos: Vector3 = player_ship.global_position
+	var entries: Array[Dictionary] = []
+	
+	# 扫描场景中的所有相关对象
+	_scan_nearby_objects(player_pos, entries)
+	
+	# 按距离排序
+	entries.sort_custom(func(a, b): return a["distance"] < b["distance"])
+	
+	# 限制显示数量
+	if entries.size() > OVERVIEW_MAX_ENTRIES:
+		entries.resize(OVERVIEW_MAX_ENTRIES)
+	
+	# 刷新UI列表
+	_refresh_overview_list(entries)
+
+func _scan_nearby_objects(player_pos: Vector3, entries: Array[Dictionary]) -> void:
+	var root = get_tree().current_scene
+	if not root:
+		return
+	
+	# 递归扫描所有子节点
+	_scan_node_children(root, player_pos, entries)
+
+func _scan_node_children(node: Node, player_pos: Vector3, entries: Array[Dictionary]) -> void:
+	for child in node.get_children():
+		# 跳过自身
+		if child == player_ship:
+			continue
+		
+		# 检查是否为3D空间中的对象
+		if child is Node3D:
+			var dist = player_pos.distance_to(child.global_position)
+			if dist > OVERVIEW_MAX_RANGE:
+				continue
+			
+			var entry = _classify_object(child, dist)
+			if not entry.is_empty():
+				entries.append(entry)
+		
+		# 递归扫描子节点
+		_scan_node_children(child, player_pos, entries)
+
+func _classify_object(obj: Node, distance: float) -> Dictionary:
+	var result: Dictionary = { "node": obj, "distance": distance, "name": "", "type": "" }
+	
+	# 飞船（排除玩家）
+	if obj is Ship and not obj is PlayerShip:
+		if obj.ship_data and obj.ship_data.ship_name:
+			result["name"] = obj.ship_data.ship_name
+		else:
+			result["name"] = "未知飞船"
+		result["type"] = "飞船"
+		return result
+	
+	# 小行星
+	if obj is Asteroid:
+		result["name"] = obj.ore_type + "小行星"
+		result["type"] = "小行星"
+		return result
+	
+	# 空间站
+	if obj is Station:
+		result["name"] = obj.station_name
+		result["type"] = "空间站"
+		return result
+	
+	return {}
+
+func _refresh_overview_list(entries: Array[Dictionary]) -> void:
+	# 清空列表
+	for child in overview_list.get_children():
+		child.queue_free()
+	
+	# 填充列表项
+	for entry in entries:
+		var row = HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		# 名称
+		var name_label = Label.new()
+		name_label.text = entry["name"]
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_label.custom_minimum_size = Vector2(120, 0)
+		name_label.theme_override_colors["font_color"] = Color(0.8, 0.8, 0.9, 1)
+		name_label.theme_override_font_sizes["font_size"] = 10
+		
+		# 距离
+		var dist_label = Label.new()
+		dist_label.text = _format_distance(entry["distance"])
+		dist_label.custom_minimum_size = Vector2(80, 0)
+		dist_label.theme_override_colors["font_color"] = Color(0.6, 0.6, 0.7, 1)
+		dist_label.theme_override_font_sizes["font_size"] = 10
+		
+		# 类型（带颜色标记）
+		var type_label = Label.new()
+		type_label.text = entry["type"]
+		type_label.custom_minimum_size = Vector2(80, 0)
+		type_label.theme_override_font_sizes["font_size"] = 10
+		match entry["type"]:
+			"飞船":
+				type_label.theme_override_colors["font_color"] = Color(1, 0.5, 0.2, 1)
+			"小行星":
+				type_label.theme_override_colors["font_color"] = Color(0.5, 1, 0.5, 1)
+			"空间站":
+				type_label.theme_override_colors["font_color"] = Color(0.3, 0.6, 1, 1)
+			_:
+				type_label.theme_override_colors["font_color"] = Color(0.7, 0.7, 0.7, 1)
+		
+		row.add_child(name_label)
+		row.add_child(dist_label)
+		row.add_child(type_label)
+		overview_list.add_child(row)
+
+static func _format_distance(distance: float) -> String:
+	if distance >= 10000:
+		return "%.1f km" % (distance / 1000.0)
+	elif distance >= 1000:
+		return "%d m" % distance
+	else:
+		return "%d m" % distance
 
 ## ====== 消息与信息 ======
 
