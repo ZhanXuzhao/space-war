@@ -1,0 +1,60 @@
+[gd_scene format=3 uid="uid://c8m84j1qo5sd8"]
+
+[ext_resource type="Script" uid="uid://bid5f54syddgu" path="res://scripts/ships/PlayerShip.gd" id="1"]
+[ext_resource type="Script" uid="uid://ssrd4p0dehxx" path="res://scripts/ui/InteractionController.gd" id="3"]
+[ext_resource type="Script" uid="uid://c87pfak81fkb2" path="res://scripts/modules/ModuleManager.gd" id="4"]
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(150, 75, 300)
+
+[sub_resource type="StandardMaterial3D" id="mat"]
+albedo_color = Color(0.2, 0.4, 0.8, 1)
+metallic = 0.8
+roughness = 0.3
+
+[sub_resource type="BoxMesh" id="mesh"]
+material = SubResource("mat")
+size = Vector3(150, 75, 300)
+
+[sub_resource type="StandardMaterial3D" id="glow_mat"]
+albedo_color = Color(0.3, 0.6, 1, 1)
+emission_enabled = true
+emission = Color(0.3, 0.6, 1, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="BoxMesh" id="glow_mesh"]
+material = SubResource("glow_mat")
+size = Vector3(37, 9, 37)
+
+[node name="PlayerShip" type="CharacterBody3D" unique_id=1895444043]
+collision_layer = 2
+collision_mask = 3
+script = ExtResource("1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=43363968]
+shape = SubResource("shape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1110229764]
+mesh = SubResource("mesh")
+
+[node name="EngineGlow" type="MeshInstance3D" parent="." unique_id=1767891852]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 8)
+mesh = SubResource("glow_mesh")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=2080378374]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 0)
+light_color = Color(0.8, 0.9, 1, 1)
+light_energy = 1.5
+omni_range = 50.0
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=2035158542]
+transform = Transform3D(1, 0, 0, 0, 0.949, -0.316, 0, 0.316, 0.949, 0, 10, 30)
+current = true
+near = 0.5
+far = 100000.0
+
+[node name="InteractionController" type="Node" parent="." unique_id=1222457633]
+script = ExtResource("3")
+
+[node name="ModuleManager" type="Node" parent="." unique_id=565962968]
+script = ExtResource("4")

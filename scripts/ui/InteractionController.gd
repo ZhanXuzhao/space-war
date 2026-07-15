@@ -23,21 +23,12 @@ func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
 	if ships.size() > 0:
 		player_ship = ships[0] as PlayerShip
+	if not player_ship:
+		player_ship = get_node_or_null("/root/SpaceWar/PlayerShip") as PlayerShip
 
 func _input(event: InputEvent) -> void:
 	if not player_ship or not camera:
 		return
-	
-	# 鼠标右键 - 在释放时判断：拖拽（旋转视角）vs 点击（移动/交互）
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
-		if event.pressed:
-			_right_click_press_pos = get_viewport().get_mouse_position()
-			_right_click_pressed = true
-		elif _right_click_pressed and not player_ship.is_right_click_drag:
-			_right_click_pressed = false
-			_handle_right_click(event)
-		else:
-			_right_click_pressed = false
 	
 	# 鼠标左键 - 选择目标
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -79,7 +70,7 @@ func _handle_right_click(_event: InputEventMouseButton) -> void:
 		var move_pos = origin + direction * 5000.0
 		player_ship.order_move_to(move_pos)
 
-func _handle_left_click(_event: InputEventMouseButton) -> void:
+func _handle_left_click(event: InputEventMouseButton) -> void:
 	var space_state = get_viewport().get_world_3d().direct_space_state
 	var mouse_pos = get_viewport().get_mouse_position()
 	var origin = camera.project_ray_origin(mouse_pos)
@@ -89,6 +80,18 @@ func _handle_left_click(_event: InputEventMouseButton) -> void:
 	var query = PhysicsRayQueryParameters3D.create(origin, ray_end)
 	query.collide_with_areas = true
 	var result = space_state.intersect_ray(query)
+	
+	# Alt+左键 → 相机锁定/解锁
+	if event.alt_pressed:
+		if result:
+			var collider = result.collider
+			if collider is Node3D:
+				player_ship.set_camera_focus(collider)
+			else:
+				player_ship.clear_camera_focus()
+		else:
+			player_ship.clear_camera_focus()
+		return
 	
 	if result:
 		var collider = result.collider

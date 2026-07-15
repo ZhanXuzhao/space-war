@@ -10,9 +10,6 @@ signal warp_started(target_location: Vector3)
 signal warp_finished()
 signal module_activated(slot_index: int, module_name: String)
 
-@export var rotation_speed: float = 2.0
-@export var acceleration: float = 100.0
-@export var deceleration: float = 50.0
 @export var warp_acceleration: float = 500.0
 
 var flight_mode: FlightMode = FlightMode.NORMAL
@@ -22,18 +19,23 @@ var warp_charge_time: float = 3.0
 var warp_charging: bool = false
 var angular_velocity: Vector3 = Vector3.ZERO
 
+## 自动攻击
+var auto_fire: bool = false
+var auto_fire_timer: float = 0.0
+const AUTO_FIRE_INTERVAL: float = 0.5  # 自动开火检测间隔
+
 ## 模块管理
 var module_manager: Node
 
 ## 视角控制
 @export var camera_orbit_speed: float = 0.005
 @export var camera_zoom_speed: float = 5.0
-@export var camera_min_distance: float = 10.0
-@export var camera_max_distance: float = 500.0
-@export var camera_default_distance: float = 30.0
+@export var camera_min_distance: float = 50.0
+@export var camera_max_distance: float = 500000.0
+@export var camera_default_distance: float = 900.0
 
 var _camera: Camera3D
-var _cam_distance: float = 30.0
+var _cam_distance: float = 900.0  # 默认 camera_default_distance
 var _cam_azimuth: float = 0.0      # 水平角度（度）
 var _cam_elevation: float = 15.0   # 俯仰角度（度）
 var _right_click_pressed: bool = false
@@ -72,6 +74,13 @@ func _process_normal_flight(delta: float) -> void:
 		var dist = global_position.distance_to(move_target)
 		if dist < 50.0:
 			has_move_order = false
+	
+	# 自动攻击
+	if auto_fire and active_target and active_target.is_alive:
+		auto_fire_timer += delta
+		if auto_fire_timer >= AUTO_FIRE_INTERVAL:
+			auto_fire_timer = 0.0
+			fire_weapons(active_target, delta)
 
 ## 移动处理
 func _handle_movement(delta: float) -> void:
@@ -164,17 +173,89 @@ func fire_weapons(target: Ship, delta: float) -> void:
 		if weapon is Weapon:
 			weapon.try_fire(target, delta)
 
-## 更新相机位置（球面坐标环绕飞船）
+## 右键点击移动 - 向太空发射射线，移动到点击位置
+func _handle_right_click_move() -> void:
+	var space_state = get_viewport().get_world_3d().direct_space_state
+	var mouse_pos = get_viewport().get_mouse_position()
+	var cam = _camera
+	if not cam:
+		return
+	var origin = cam.project_ray_origin(mouse_pos)
+	var direction = cam.project_ray_normal(mouse_pos)
+	var ray_end = origin + direction * 50000.0
+	
+	var query = PhysicsRayQueryParameters3D.create(origin, ray_end)
+	query.collide_with_areas = true
+	var result = space_state.intersect_ray(query)
+	
+	if result:
+		var collider = result.collider
+		if collider is Ship and collider != self:
+			order_move_to(result.position)
+		elif collider is Asteroid:
+			order_move_to(collider.global_position)
+		elif collider is Station:
+			order_move_to(collider.global_position)
+		else:
+			order_move_to(result.position)
+	else:
+		var move_pos = origin + direction * 5000.0
+		order_move_to(move_pos)
+
+## 设置自动攻击模式
+func set_auto_fire(enabled: bool) -> void:
+	auto_fire = enabled
+	if enabled:
+		add_message("自动攻击: 开启", Color(1, 0.3, 0.3))
+	else:
+		add_message("自动攻击: 关闭", Color(0.7, 0.7, 0.7))
+
+func add_message(text: String, color: Color = Color.WHITE) -> void:
+	var hud = get_node_or_null("../HUD")
+	if not hud:
+		hud = get_node_or_null("/root/SpaceWar/HUD")
+	if hud and hud.has_method("add_message"):
+		hud.add_message(text, color)
+
+## 相机锁定目标
+var camera_focus_target: Node3D = null
+
+func get_cam_distance() -> float:
+	return _cam_distance
+
+## 设置相机锁定到目标（Alt+左键点击目标）
+func set_camera_focus(target: Node3D) -> void:
+	camera_focus_target = target
+	if target:
+		add_message("相机锁定: " + target.name, Color(0.3, 0.8, 1))
+	else:
+		add_message("相机解锁", Color(0.7, 0.7, 0.7))
+
+## 清除相机锁定
+func clear_camera_focus() -> void:
+	set_camera_focus(null)
+
+## 更新相机位置（球面坐标环绕）
 func _update_camera() -> void:
 	if not _camera:
 		return
 	var rad_az = deg_to_rad(_cam_azimuth)
 	var rad_el = deg_to_rad(_cam_elevation)
-	var x = _cam_distance * cos(rad_el) * sin(rad_az)
-	var y = _cam_distance * sin(rad_el)
-	var z = _cam_distance * cos(rad_el) * cos(rad_az)
-	_camera.position = Vector3(x, y, z)
-	_camera.look_at(Vector3.ZERO)
+	var offset = Vector3(
+		_cam_distance * cos(rad_el) * sin(rad_az),
+		_cam_distance * sin(rad_el),
+		_cam_distance * cos(rad_el) * cos(rad_az)
+	)
+	
+	# 有锁定目标时，相机以目标为中心环绕
+	if camera_focus_target and is_instance_valid(camera_focus_target) and camera_focus_target.is_inside_tree():
+		var target_pos = camera_focus_target.global_position
+		_camera.position = target_pos + offset - global_position
+		_camera.look_at(target_pos, Vector3.UP)
+	else:
+		camera_focus_target = null
+		_camera.position = offset
+		_camera.look_at(global_position, Vector3.UP)
 
 ## 键盘快捷键
 func _input(event: InputEvent) -> void:
@@ -192,7 +273,16 @@ func _input(event: InputEvent) -> void:
 		has_move_order = false
 		current_speed = 0.0
 	
-	# 右键拖拽 - 旋转视角
+	# H键 - 重置相机到自身飞船
+	if event is InputEventKey and event.pressed and event.keycode == KEY_H:
+		clear_camera_focus()
+		# 重置视角角度
+		_cam_azimuth = 0.0
+		_cam_elevation = 15.0
+		_cam_distance = camera_default_distance
+		add_message("相机复位", Color(0.3, 0.8, 1))
+	
+	# 右键拖拽 - 旋转视角（点击不执行任何操作）
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
 		if event.pressed:
 			_right_click_pressed = true
@@ -212,8 +302,9 @@ func _input(event: InputEvent) -> void:
 			_cam_elevation = clampf(_cam_elevation, -89.0, 89.0)
 	
 	# 滚轮 - 拉近拉远
+	var zoom_step = camera_max_distance * 0.02
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			_cam_distance = maxf(camera_min_distance, _cam_distance - camera_zoom_speed)
+			_cam_distance = maxf(camera_min_distance, _cam_distance - zoom_step)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			_cam_distance = minf(camera_max_distance, _cam_distance + camera_zoom_speed)
+			_cam_distance = minf(camera_max_distance, _cam_distance + zoom_step)

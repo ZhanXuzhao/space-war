@@ -16,14 +16,14 @@ emission = Color(0.3, 0.6, 1.0, 1)
 emission_energy_multiplier = 2.0
 
 [sub_resource type="BoxShape3D" id="shape"]
-size = Vector3(8, 4, 16)
+size = Vector3(150, 75, 300)
 
 [sub_resource type="BoxMesh" id="mesh"]
-size = Vector3(8, 4, 16)
+size = Vector3(150, 75, 300)
 material = SubResource("mat")
 
 [sub_resource type="BoxMesh" id="glow_mesh"]
-size = Vector3(2, 0.5, 2)
+size = Vector3(37, 9, 37)
 material = SubResource("glow_mat")
 
 [node name="PlayerShip" type="CharacterBody3D"]

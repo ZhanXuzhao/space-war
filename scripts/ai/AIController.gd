@@ -25,15 +25,54 @@ func _ready() -> void:
 	owner_ship = get_parent() as Ship
 	if owner_ship and owner_ship.faction == Ship.Faction.NPC_HOSTILE:
 		current_state = AIState.PATROL
+		# 如果没有武器，自动创建基础武器
+		_ensure_weapon()
 	
 	# 查找玩家
 	await get_tree().process_frame
 	_find_player()
+	
+	# 延迟设置巡逻点
+	await get_tree().create_timer(0.5).timeout
+	_setup_auto_patrol()
+
+func _ensure_weapon() -> void:
+	# 如果 owner_ship 没有任何武器节点，创建一个基础武器
+	if owner_ship.weapon_nodes.is_empty():
+		var weapon = Weapon.new()
+		# 使用默认资源
+		var wdata = WeaponData.new()
+		wdata.weapon_name = "NPC标准炮"
+		wdata.damage = 15.0
+		wdata.damage_type = "热能"
+		wdata.rate_of_fire = 1.5
+		wdata.optimal_range = 1500.0
+		wdata.falloff_range = 3000.0
+		wdata.tracking_speed = 0.08
+		wdata.capacitor_usage = 2.0
+		weapon.weapon_data = wdata
+		var ship = owner_ship
+		# 用 call_deferred 延迟添加武器节点（防止在敌舰 _ready 过程中直接 add_child 报错）
+		ship.call_deferred("add_child", weapon)
+		# 数组操作是安全的，立即添加
+		ship.weapon_nodes.append(weapon)
+
+func _setup_auto_patrol() -> void:
+	if not owner_ship or patrol_points.size() > 0:
+		return
+	# 自动创建巡逻点
+	var center = owner_ship.global_position
+	for i in range(4):
+		var angle = (2.0 * PI * i) / 4
+		var point = center + Vector3(cos(angle) * 2000.0, 0, sin(angle) * 2000.0)
+		patrol_points.append(point)
 
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
 	if ships.size() > 0:
 		player_ship = ships[0] as Ship
+	if not player_ship:
+		player_ship = get_node_or_null("/root/SpaceWar/PlayerShip") as Ship
 
 func _process(delta: float) -> void:
 	if not owner_ship or not owner_ship.is_alive:
@@ -74,7 +113,12 @@ func _process_patrol(_delta: float) -> void:
 		patrol_index = (patrol_index + 1) % patrol_points.size()
 		owner_ship.order_move_to(patrol_points[patrol_index])
 	
+	# 持续探测玩家
 	_detect_hostiles()
+	
+	# 如果没有巡逻点移动指令，设置第一个巡逻点
+	if not owner_ship.has_move_order and patrol_points.size() > 0:
+		owner_ship.order_move_to(patrol_points[0])
 
 ## 交战状态
 func _process_engage(delta: float) -> void:

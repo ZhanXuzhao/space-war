@@ -4,6 +4,8 @@
 [ext_resource type="Texture2D" uid="uid://dx84ylxdpwftc" path="res://textures/skybox/ComfyUI_00352_.png" id="1_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://d20i3004nq1fd" path="res://scenes/world/StarSystem.tscn" id="2"]
 [ext_resource type="PackedScene" uid="uid://bwxl37j1p345b" path="res://scenes/ui/HUD.tscn" id="3"]
+[ext_resource type="Script" path="res://scripts/world/EnemySpawner.gd" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/NPCShip.tscn" id="5"]
 
 [sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_1bvp3"]
 panorama = ExtResource("1_1bvp3")
@@ -34,3 +36,13 @@ light_energy = 1.5
 [node name="HUD" parent="." unique_id=751721544 instance=ExtResource("3")]
 
 [node name="StarSystem" parent="." unique_id=552978838 instance=ExtResource("2")]
+
+[node name="EnemySpawner" type="Node" parent="."]
+script = ExtResource("4")
+spawn_interval_min = 10.0
+spawn_interval_max = 30.0
+spawn_distance_min = 5000.0
+spawn_distance_max = 15000.0
+max_enemies = 8
+enable_warp_effect = true
+npc_scene = ExtResource("5")

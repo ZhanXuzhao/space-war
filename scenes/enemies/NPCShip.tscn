@@ -9,10 +9,10 @@ metallic = 0.6
 roughness = 0.4
 
 [sub_resource type="BoxShape3D" id="shape"]
-size = Vector3(6, 3, 12)
+size = Vector3(150, 75, 300)
 
 [sub_resource type="BoxMesh" id="mesh"]
-size = Vector3(6, 3, 12)
+size = Vector3(150, 75, 300)
 material = SubResource("mat")
 
 [node name="NPCShip" type="CharacterBody3D"]
@@ -28,8 +28,14 @@ mesh = SubResource("mesh")
 
 [node name="OmniLight3D" type="OmniLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)
-omni_range = 40.0
-light_color = Color(1.0, 0.3, 0.3, 1)
+
+[node name="AIController" type="Node" parent="."]
+script = ExtResource("3")
+detection_range = 20000.0
+engagement_range = 2000.0
+orbit_range = 1500.0
+flee_shield_percent = 25.0
+aggro_chance = 1.0
 light_energy = 1.0
 
 [node name="AIController" type="Node" parent="."]

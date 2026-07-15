@@ -13,18 +13,28 @@ class_name HUD
 @export var ship_name_label: Label
 @export var target_info_panel: Control
 @export var target_name_label: Label
+@export var target_type_label: Label
+@export var target_dist_label: Label
 @export var target_shield_bar: ProgressBar
 @export var target_armor_bar: ProgressBar
 @export var target_hull_bar: ProgressBar
+@export var btn_approach: Button
+@export var btn_orbit: Button
+@export var btn_warp: Button
 @export var overview_list: VBoxContainer
 @export var capacitor_text_label: Label
 @export var isk_label: Label
 @export var cargo_label: Label
 @export var location_label: Label
 @export var message_log: RichTextLabel
+@export var context_menu: OverviewContextMenu
+@export var spawn_button: Button
+@export var cam_dist_label: Label
 
 var player_ship: PlayerShip = null
 var global_ref: Node
+var enemy_spawner: EnemySpawner = null
+var _target_node: Node = null  # 当前目标面板显示的节点
 
 ## 总览更新
 var overview_update_timer: float = 0.0
@@ -32,9 +42,72 @@ const OVERVIEW_UPDATE_INTERVAL: float = 1.0  # 每秒更新一次
 const OVERVIEW_MAX_ENTRIES: int = 20
 const OVERVIEW_MAX_RANGE: float = 100000.0  # 最大探测范围
 
+## 排序状态
+enum SortColumn { NAME, DISTANCE, SPEED, TYPE }
+var sort_column: SortColumn = SortColumn.DISTANCE
+var sort_ascending: bool = true
+var _name_header: Label
+var _dist_header: Label
+var _speed_header: Label
+var _type_header: Label
+
 func _ready() -> void:
 	global_ref = get_node("/root/Global")
 	await get_tree().process_frame
+	
+	# 手动查找节点（场景 NodePath 绑定有时不生效）
+	overview_list = get_node_or_null("OverviewPanel/ScrollContainer/OverviewList") as VBoxContainer
+	target_info_panel = get_node_or_null("TargetPanel") as Control
+	target_name_label = get_node_or_null("TargetPanel/TargetName") as Label
+	target_type_label = get_node_or_null("TargetPanel/TargetType") as Label
+	target_dist_label = get_node_or_null("TargetPanel/TargetDistLabel") as Label
+	target_shield_bar = get_node_or_null("TargetPanel/TargetShieldBar") as ProgressBar
+	target_armor_bar = get_node_or_null("TargetPanel/TargetArmorBar") as ProgressBar
+	target_hull_bar = get_node_or_null("TargetPanel/TargetHullBar") as ProgressBar
+	btn_approach = get_node_or_null("TargetPanel/BtnApproach") as Button
+	btn_orbit = get_node_or_null("TargetPanel/BtnOrbit") as Button
+	btn_warp = get_node_or_null("TargetPanel/BtnWarp") as Button
+	cam_dist_label = get_node_or_null("CamDistLabel") as Label
+	if not cam_dist_label:
+		# 如果找不到，在代码中创建一个
+		cam_dist_label = Label.new()
+		cam_dist_label.name = "CamDistLabel"
+		cam_dist_label.anchor_right = 1.0
+		cam_dist_label.anchor_bottom = 1.0
+		cam_dist_label.offset_left = -200.0
+		cam_dist_label.offset_right = -10.0
+		cam_dist_label.offset_top = -30.0
+		cam_dist_label.offset_bottom = -10.0
+		cam_dist_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		cam_dist_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6, 0.7))
+		cam_dist_label.add_theme_font_size_override("font_size", 10)
+		cam_dist_label.text = "---"
+		add_child(cam_dist_label)
+	# 总览空白区域点击 → 清除相机锁定
+	if overview_list:
+		overview_list.mouse_filter = Control.MOUSE_FILTER_STOP
+		overview_list.gui_input.connect(_on_overview_empty_click)
+	_name_header = get_node_or_null("OverviewPanel/ColumnHeader/NameHeader") as Label
+	_dist_header = get_node_or_null("OverviewPanel/ColumnHeader/DistHeader") as Label
+	_speed_header = get_node_or_null("OverviewPanel/ColumnHeader/SpeedHeader") as Label
+	_type_header = get_node_or_null("OverviewPanel/ColumnHeader/TypeHeader") as Label
+	
+	# 连接列标题点击
+	if _name_header:
+		_name_header.mouse_filter = Control.MOUSE_FILTER_STOP
+		_name_header.gui_input.connect(_on_header_click.bind(SortColumn.NAME))
+	if _dist_header:
+		_dist_header.mouse_filter = Control.MOUSE_FILTER_STOP
+		_dist_header.gui_input.connect(_on_header_click.bind(SortColumn.DISTANCE))
+	if _type_header:
+		_type_header.mouse_filter = Control.MOUSE_FILTER_STOP
+		_type_header.gui_input.connect(_on_header_click.bind(SortColumn.TYPE))
+	if _speed_header:
+		_speed_header.mouse_filter = Control.MOUSE_FILTER_STOP
+		_speed_header.gui_input.connect(_on_header_click.bind(SortColumn.SPEED))
+	
+	_update_sort_indicators()
+	
 	_find_player()
 	
 	if global_ref:
@@ -46,11 +119,36 @@ func _ready() -> void:
 	_update_isk_display()
 	_update_location_display()
 	_update_overview()
+	
+	# 连接右键菜单
+	if context_menu:
+		context_menu.menu_option_selected.connect(_on_context_menu_action)
+	
+	# 连接目标操作按钮
+	if btn_approach:
+		btn_approach.pressed.connect(_on_btn_approach)
+	if btn_orbit:
+		btn_orbit.pressed.connect(_on_btn_orbit)
+	if btn_warp:
+		btn_warp.pressed.connect(_on_btn_warp)
+	
+	# 连接召唤按钮
+	if spawn_button:
+		spawn_button.pressed.connect(_on_spawn_button_pressed)
+		# 找到 EnemySpawner
+		enemy_spawner = get_node_or_null("/root/SpaceWar/EnemySpawner") as EnemySpawner
+		if not enemy_spawner:
+			# 延迟再试
+			await get_tree().create_timer(0.5).timeout
+			enemy_spawner = get_node_or_null("/root/SpaceWar/EnemySpawner") as EnemySpawner
 
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
 	if ships.size() > 0:
 		player_ship = ships[0] as PlayerShip
+	if not player_ship:
+		player_ship = get_node_or_null("/root/SpaceWar/PlayerShip") as PlayerShip
+	if player_ship:
 		_connect_ship_signals()
 
 func _connect_ship_signals() -> void:
@@ -68,6 +166,8 @@ func _connect_ship_signals() -> void:
 func _process(delta: float) -> void:
 	if player_ship and is_inside_tree():
 		_update_speed()
+		_update_target_distance()
+		_update_cam_dist()
 	
 	# 定时更新总览
 	overview_update_timer += delta
@@ -118,10 +218,24 @@ func _update_speed() -> void:
 ## ====== 目标信息 ======
 
 func _on_target_locked(target: Ship) -> void:
+	_target_node = target
 	if target_info_panel:
 		target_info_panel.show()
+	
+	var name_str = target.ship_data.ship_name if target.ship_data else "未知飞船"
 	if target_name_label:
-		target_name_label.text = "目标: " + (target.ship_data.ship_name if target.ship_data else "未知")
+		target_name_label.text = name_str
+	if target_type_label:
+		match target.faction:
+			Ship.Faction.NPC_HOSTILE:
+				target_type_label.text = "敌对"
+				target_type_label.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
+			Ship.Faction.NPC_FRIENDLY:
+				target_type_label.text = "友好"
+				target_type_label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
+			_:
+				target_type_label.text = "中立"
+				target_type_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
 	
 	target.shield_changed.connect(_update_target_shield)
 	target.armor_changed.connect(_update_target_armor)
@@ -132,9 +246,18 @@ func _on_target_locked(target: Ship) -> void:
 	_update_target_armor(target.current_armor, target.max_armor)
 	_update_target_hull(target.current_hull, target.max_hull)
 
+func _update_target_distance() -> void:
+	if not target_dist_label or not _target_node or not is_instance_valid(_target_node):
+		return
+	if not player_ship:
+		return
+	var dist = player_ship.global_position.distance_to(_target_node.global_position)
+	target_dist_label.text = "距离: " + _format_distance(dist)
+
 func _on_target_lost(_target: Ship) -> void:
 	if target_info_panel:
 		target_info_panel.hide()
+	_target_node = null
 
 func _on_target_destroyed() -> void:
 	if target_info_panel:
@@ -165,8 +288,8 @@ func _update_overview() -> void:
 	# 扫描场景中的所有相关对象
 	_scan_nearby_objects(player_pos, entries)
 	
-	# 按距离排序
-	entries.sort_custom(func(a, b): return a["distance"] < b["distance"])
+	# 按当前排序列和方向排序
+	_sort_entries(entries)
 	
 	# 限制显示数量
 	if entries.size() > OVERVIEW_MAX_ENTRIES:
@@ -203,7 +326,7 @@ func _scan_node_children(node: Node, player_pos: Vector3, entries: Array[Diction
 		_scan_node_children(child, player_pos, entries)
 
 func _classify_object(obj: Node, distance: float) -> Dictionary:
-	var result: Dictionary = { "node": obj, "distance": distance, "name": "", "type": "" }
+	var result: Dictionary = { "node": obj, "distance": distance, "name": "", "type": "", "speed": 0.0 }
 	
 	# 飞船（排除玩家）
 	if obj is Ship and not obj is PlayerShip:
@@ -212,6 +335,7 @@ func _classify_object(obj: Node, distance: float) -> Dictionary:
 		else:
 			result["name"] = "未知飞船"
 		result["type"] = "飞船"
+		result["speed"] = obj.current_speed
 		return result
 	
 	# 小行星
@@ -229,12 +353,16 @@ func _classify_object(obj: Node, distance: float) -> Dictionary:
 	return {}
 
 func _refresh_overview_list(entries: Array[Dictionary]) -> void:
+	if not overview_list:
+		print("总览: overview_list 为 null!")
+		return
 	# 清空列表
 	for child in overview_list.get_children():
 		child.queue_free()
 	
 	# 填充列表项
-	for entry in entries:
+	for i in range(entries.size()):
+		var entry = entries[i]
 		var row = HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		
@@ -242,36 +370,63 @@ func _refresh_overview_list(entries: Array[Dictionary]) -> void:
 		var name_label = Label.new()
 		name_label.text = entry["name"]
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_label.custom_minimum_size = Vector2(120, 0)
-		name_label.theme_override_colors["font_color"] = Color(0.8, 0.8, 0.9, 1)
-		name_label.theme_override_font_sizes["font_size"] = 10
+		name_label.custom_minimum_size = Vector2(100, 20)
+		name_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.9, 1))
+		name_label.add_theme_font_size_override("font_size", 10)
 		
 		# 距离
 		var dist_label = Label.new()
 		dist_label.text = _format_distance(entry["distance"])
-		dist_label.custom_minimum_size = Vector2(80, 0)
-		dist_label.theme_override_colors["font_color"] = Color(0.6, 0.6, 0.7, 1)
-		dist_label.theme_override_font_sizes["font_size"] = 10
+		dist_label.custom_minimum_size = Vector2(65, 20)
+		dist_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7, 1))
+		dist_label.add_theme_font_size_override("font_size", 10)
 		
-		# 类型（带颜色标记）
+		# 速度
+		var speed_label = Label.new()
+		speed_label.text = _format_speed(entry["speed"])
+		speed_label.custom_minimum_size = Vector2(60, 20)
+		speed_label.add_theme_color_override("font_color", Color(0.3, 1, 0.5, 1))
+		speed_label.add_theme_font_size_override("font_size", 10)
+		
+		# 类型
 		var type_label = Label.new()
 		type_label.text = entry["type"]
-		type_label.custom_minimum_size = Vector2(80, 0)
-		type_label.theme_override_font_sizes["font_size"] = 10
+		type_label.custom_minimum_size = Vector2(60, 20)
+		type_label.add_theme_font_size_override("font_size", 10)
 		match entry["type"]:
 			"飞船":
-				type_label.theme_override_colors["font_color"] = Color(1, 0.5, 0.2, 1)
+				type_label.add_theme_color_override("font_color", Color(1, 0.5, 0.2, 1))
 			"小行星":
-				type_label.theme_override_colors["font_color"] = Color(0.5, 1, 0.5, 1)
+				type_label.add_theme_color_override("font_color", Color(0.5, 1, 0.5, 1))
 			"空间站":
-				type_label.theme_override_colors["font_color"] = Color(0.3, 0.6, 1, 1)
+				type_label.add_theme_color_override("font_color", Color(0.3, 0.6, 1, 1))
 			_:
-				type_label.theme_override_colors["font_color"] = Color(0.7, 0.7, 0.7, 1)
+				type_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7, 1))
+		
+		# 点击 → 锁定/选择目标
+		name_label.gui_input.connect(_on_overview_label_input.bind(entry))
+		dist_label.gui_input.connect(_on_overview_label_input.bind(entry))
+		speed_label.gui_input.connect(_on_overview_label_input.bind(entry))
+		type_label.gui_input.connect(_on_overview_label_input.bind(entry))
+		
+		name_label.mouse_filter = Control.MOUSE_FILTER_STOP
+		dist_label.mouse_filter = Control.MOUSE_FILTER_STOP
+		speed_label.mouse_filter = Control.MOUSE_FILTER_STOP
+		type_label.mouse_filter = Control.MOUSE_FILTER_STOP
 		
 		row.add_child(name_label)
 		row.add_child(dist_label)
+		row.add_child(speed_label)
 		row.add_child(type_label)
 		overview_list.add_child(row)
+
+static func _format_speed(speed: float) -> String:
+	if speed >= 100:
+		return "%.0f" % speed
+	elif speed >= 1:
+		return "%.1f" % speed
+	else:
+		return "0"
 
 static func _format_distance(distance: float) -> String:
 	if distance >= 10000:
@@ -281,7 +436,244 @@ static func _format_distance(distance: float) -> String:
 	else:
 		return "%d m" % distance
 
+## ====== 总览排序（点击表头切换） ======
+
+func _on_header_click(event: InputEvent, column: SortColumn) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if sort_column == column:
+			sort_ascending = not sort_ascending
+		else:
+			sort_column = column
+			sort_ascending = true
+		_update_sort_indicators()
+		_update_overview()
+
+func _sort_entries(entries: Array[Dictionary]) -> void:
+	match sort_column:
+		SortColumn.NAME:
+			if sort_ascending:
+				entries.sort_custom(func(a, b): return a["name"] < b["name"])
+			else:
+				entries.sort_custom(func(a, b): return a["name"] > b["name"])
+		SortColumn.DISTANCE:
+			if sort_ascending:
+				entries.sort_custom(func(a, b): return a["distance"] < b["distance"])
+			else:
+				entries.sort_custom(func(a, b): return a["distance"] > b["distance"])
+		SortColumn.TYPE:
+			if sort_ascending:
+				entries.sort_custom(func(a, b): return a["type"] < b["type"])
+			else:
+				entries.sort_custom(func(a, b): return a["type"] > b["type"])
+		SortColumn.SPEED:
+			if sort_ascending:
+				entries.sort_custom(func(a, b): return a["speed"] < b["speed"])
+			else:
+				entries.sort_custom(func(a, b): return a["speed"] > b["speed"])
+
+func _update_sort_indicators() -> void:
+	var arrow_up = " ▲"
+	var arrow_down = " ▼"
+	
+	if _name_header:
+		if sort_column == SortColumn.NAME:
+			_name_header.text = "名称" + (arrow_up if sort_ascending else arrow_down)
+		else:
+			_name_header.text = "名称"
+	
+	if _dist_header:
+		if sort_column == SortColumn.DISTANCE:
+			_dist_header.text = "距离" + (arrow_up if sort_ascending else arrow_down)
+		else:
+			_dist_header.text = "距离"
+	
+	if _type_header:
+		if sort_column == SortColumn.TYPE:
+			_type_header.text = "类型" + (arrow_up if sort_ascending else arrow_down)
+		else:
+			_type_header.text = "类型"
+	if _speed_header:
+		if sort_column == SortColumn.SPEED:
+			_speed_header.text = "速度" + (arrow_up if sort_ascending else arrow_down)
+		else:
+			_speed_header.text = "速度"
+
+## ====== 总览交互（点击行 = 锁定/右键菜单） ======
+
+## Alt+点击空白区域 → 相机解锁回自身飞船
+func _on_overview_empty_click(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.alt_pressed and player_ship:
+			player_ship.clear_camera_focus()
+
+func _on_overview_label_input(event: InputEvent, entry: Dictionary) -> void:
+	if not player_ship:
+		return
+	
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# Alt+左键 → 相机锁定/解锁
+		if event.alt_pressed:
+			var target_node = entry.get("node")
+			if target_node is Node3D and is_instance_valid(target_node):
+				player_ship.set_camera_focus(target_node)
+			else:
+				player_ship.clear_camera_focus()
+		else:
+			_on_overview_left_click(entry)
+	
+	# 右键点击 → 弹出右键菜单
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		_on_overview_right_click(entry, event)
+
+func _on_overview_left_click(entry: Dictionary) -> void:
+	print("总览左键点击: ", entry.get("name", "?"))
+	var target_node = entry.get("node")
+	if not target_node or not is_instance_valid(target_node):
+		print("  节点无效")
+		player_ship.clear_camera_focus()
+		return
+	
+	# 飞船 → 锁定
+	if target_node is Ship:
+		player_ship.try_lock_ship(target_node)
+		add_message("锁定: " + entry.get("name", "未知"), Color(0.3, 0.8, 1))
+	# 小行星 → 接近
+	elif target_node is Asteroid:
+		player_ship.order_move_to(target_node.global_position)
+		add_message("接近: " + entry.get("name", "未知"), Color(0.5, 1, 0.5))
+	# 空间站 → 接近
+	elif target_node is Station:
+		player_ship.order_move_to(target_node.global_position)
+		add_message("接近: " + entry.get("name", "未知"), Color(0.3, 0.6, 1))
+
+func _on_overview_right_click(entry: Dictionary, event: InputEventMouseButton) -> void:
+	var target_node = entry.get("node")
+	if not target_node or not is_instance_valid(target_node):
+		return
+	if not context_menu:
+		return
+	
+	# 计算全局屏幕坐标
+	var label_local_pos = Vector2.ZERO
+	if event is InputEventMouseButton:
+		label_local_pos = event.position
+	var global_pos = get_viewport().get_mouse_position()
+	context_menu.show_for_target(target_node, global_pos)
+
+## 处理右键菜单的回调
+func _on_context_menu_action(action: String, target_node: Node) -> void:
+	if not player_ship or not target_node or not is_instance_valid(target_node):
+		return
+	
+	match action:
+		"lock":
+			if target_node is Ship:
+				player_ship.try_lock_ship(target_node)
+				var name_str = target_node.ship_data.ship_name if target_node.ship_data else "未知"
+				add_message("锁定: " + name_str, Color(0.3, 0.8, 1))
+		
+		"attack":
+			if target_node is Ship:
+				# 锁定并设为攻击目标
+				player_ship.try_lock_ship(target_node)
+				player_ship.set_active_target(target_node)
+				var name_str = target_node.ship_data.ship_name if target_node.ship_data else "未知"
+				add_message("攻击目标: " + name_str, Color(1, 0.3, 0.3))
+				# 自动开火
+				player_ship.set_auto_fire(true)
+		
+		"approach":
+			if target_node is Node3D:
+				player_ship.order_move_to(target_node.global_position)
+				var name_str = ""
+				if target_node is Ship and target_node.ship_data:
+					name_str = target_node.ship_data.ship_name
+				elif target_node is Asteroid:
+					name_str = target_node.ore_type + "小行星"
+				elif target_node is Station:
+					name_str = target_node.station_name
+				else:
+					name_str = "目标"
+				add_message("接近: " + name_str, Color(0.5, 1, 0.5))
+		
+		"unlock":
+			if target_node is Ship:
+				player_ship.unlock_target(target_node)
+				var name_str = target_node.ship_data.ship_name if target_node.ship_data else "未知"
+				add_message("解锁: " + name_str, Color(0.7, 0.7, 0.7))
+		
+		"set_active":
+			if target_node is Ship:
+				player_ship.set_active_target(target_node)
+				var name_str = target_node.ship_data.ship_name if target_node.ship_data else "未知"
+				add_message("当前目标: " + name_str, Color(0.3, 0.8, 1))
+		
+		"mine":
+			if target_node is Asteroid:
+				player_ship.order_move_to(target_node.global_position)
+				add_message("前往采矿: " + entry_name(target_node), Color(0.5, 1, 0.5))
+		
+		"dock":
+			if target_node is Station:
+				player_ship.order_move_to(target_node.global_position)
+				add_message("前往停靠: " + target_node.station_name, Color(0.3, 0.6, 1))
+
+## ====== 目标操作按钮 ======
+
+func _on_btn_approach() -> void:
+	if not player_ship or not _target_node or not is_instance_valid(_target_node):
+		return
+	if _target_node is Node3D:
+		player_ship.order_move_to(_target_node.global_position)
+		add_message("靠近: " + entry_name(_target_node), Color(0.3, 0.8, 1))
+
+func _on_btn_orbit() -> void:
+	if not player_ship or not _target_node or not is_instance_valid(_target_node):
+		return
+	# 环绕：移动到目标附近并保持距离
+	if _target_node is Node3D:
+		player_ship.order_move_to(_target_node.global_position)
+		add_message("环绕: " + entry_name(_target_node), Color(0.3, 0.8, 1))
+
+func _on_btn_warp() -> void:
+	if not player_ship or not _target_node or not is_instance_valid(_target_node):
+		return
+	if _target_node is Node3D:
+		player_ship.warp_to(_target_node.global_position)
+		add_message("跃迁: " + entry_name(_target_node), Color(0.3, 0.8, 1))
+
+## ====== 召唤敌舰按钮 ======
+
+func _on_spawn_button_pressed() -> void:
+	if enemy_spawner:
+		enemy_spawner.spawn_wave()
+		add_message("召唤一波敌舰!", Color(1, 0.3, 0.3))
+	else:
+		# 再找一次
+		enemy_spawner = get_node_or_null("/root/SpaceWar/EnemySpawner") as EnemySpawner
+		if enemy_spawner:
+			enemy_spawner.spawn_wave()
+			add_message("召唤一波敌舰!", Color(1, 0.3, 0.3))
+		else:
+			add_message("错误: 找不到 EnemySpawner!", Color.RED)
+
+static func entry_name(node: Node) -> String:
+	if node is Ship and node.ship_data:
+		return node.ship_data.ship_name
+	if node is Asteroid:
+		return node.ore_type + "小行星"
+	if node is Station:
+		return node.station_name
+	return "目标"
+
 ## ====== 消息与信息 ======
+
+func _update_cam_dist() -> void:
+	if not cam_dist_label or not player_ship:
+		return
+	if player_ship.has_method("get_cam_distance"):
+		var dist = player_ship.get_cam_distance()
+		cam_dist_label.text = "镜头: " + _format_distance(dist)
 
 func add_message(text: String, color: Color = Color.WHITE) -> void:
 	if message_log:

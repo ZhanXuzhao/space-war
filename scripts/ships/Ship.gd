@@ -19,6 +19,9 @@ signal target_lost(target: Ship)
 @export var max_capacitor: float = 400.0
 @export var capacitor_recharge: float = 20.0  # 每秒恢复量
 @export var max_speed: float = 280.0
+@export var acceleration: float = 100.0
+@export var deceleration: float = 50.0
+@export var rotation_speed: float = 2.0
 @export var cargo_capacity: float = 500.0
 @export var signature_radius: float = 40.0
 @export var max_locked_targets: int = 4
@@ -65,6 +68,37 @@ func _process(delta: float) -> void:
 	if not is_alive:
 		return
 	_recharge_capacitor(delta)
+
+func _physics_process(delta: float) -> void:
+	if not is_alive:
+		return
+	_handle_movement(delta)
+
+## 基础移动逻辑（所有飞船共用，PlayerShip 可覆写增强）
+func _handle_movement(delta: float) -> void:
+	if has_move_order:
+		var direction = (move_target - global_position).normalized()
+		var distance = global_position.distance_to(move_target)
+		
+		# 飞船朝向目标方向旋转（平滑旋转）
+		var target_basis = Basis.looking_at(direction, Vector3.UP)
+		global_basis = global_basis.slerp(target_basis, rotation_speed * delta)
+		
+		# 接近目标时减速
+		var speed_factor = 1.0
+		if distance < 200.0:
+			speed_factor = distance / 200.0
+		if distance < 50.0:
+			has_move_order = false
+		
+		current_speed = move_toward(current_speed, max_speed * speed_factor, acceleration * delta)
+		velocity = -global_basis.z * current_speed
+	else:
+		# 减速
+		current_speed = move_toward(current_speed, 0.0, deceleration * delta)
+		velocity = -global_basis.z * current_speed
+	
+	move_and_slide()
 
 func _recharge_capacitor(delta: float) -> void:
 	if current_capacitor < max_capacitor:

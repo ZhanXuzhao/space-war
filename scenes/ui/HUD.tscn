@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/HUD.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/OverviewContextMenu.gd" id="1_w3nhd"]
 
 [sub_resource type="StyleBoxFlat" id="bg_style"]
 bg_color = Color(0.1, 0.1, 0.15, 0.5)
@@ -29,6 +30,29 @@ bg_color = Color(0.15, 0.15, 0.2, 0.8)
 [node name="HUD" type="CanvasLayer"]
 layer = 1
 script = ExtResource("1")
+shield_bar = NodePath("ShipStatusPanel/ShieldBar")
+armor_bar = NodePath("ShipStatusPanel/ArmorBar")
+hull_bar = NodePath("ShipStatusPanel/HullBar")
+capacitor_bar = NodePath("ShipStatusPanel/CapacitorBar")
+speed_label = NodePath("ShipStatusPanel/SpeedLabel")
+ship_name_label = NodePath("ShipStatusPanel/ShipName")
+target_info_panel = NodePath("TargetPanel")
+target_name_label = NodePath("TargetPanel/TargetName")
+target_shield_bar = NodePath("TargetPanel/TargetShieldBar")
+target_armor_bar = NodePath("TargetPanel/TargetArmorBar")
+target_hull_bar = NodePath("TargetPanel/TargetHullBar")
+target_type_label = NodePath("TargetPanel/TargetType")
+target_dist_label = NodePath("TargetPanel/TargetDistLabel")
+btn_approach = NodePath("TargetPanel/BtnApproach")
+btn_orbit = NodePath("TargetPanel/BtnOrbit")
+btn_warp = NodePath("TargetPanel/BtnWarp")
+overview_list = NodePath("OverviewPanel/ScrollContainer/OverviewList")
+capacitor_text_label = NodePath("ShipStatusPanel/CapacitorLabel")
+isk_label = NodePath("TopBar/ISKLabel")
+location_label = NodePath("TopBar/LocationLabel")
+message_log = NodePath("MessageLog")
+spawn_button = NodePath("SpawnButton")
+context_menu = NodePath("OverviewContextMenu")
 
 [node name="ShipStatusPanel" type="Panel" parent="."]
 anchor_left = 0.0
@@ -141,21 +165,39 @@ anchor_bottom = 0.0
 offset_left = -260.0
 offset_right = -10.0
 offset_top = 10.0
-offset_bottom = 200.0
+offset_bottom = 300.0
 
-[node name="TargetName" type="Label" parent="TargetPanel"]
+[node name="TargetType" type="Label" parent="TargetPanel"]
 offset_left = 5.0
 offset_top = 5.0
 offset_right = 240.0
-offset_bottom = 25.0
+offset_bottom = 20.0
+text = "敌对"
+theme_override_colors/font_color = Color(1, 0.5, 0.2, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="TargetName" type="Label" parent="TargetPanel"]
+offset_left = 5.0
+offset_top = 20.0
+offset_right = 240.0
+offset_bottom = 40.0
 text = "目标: 无"
 theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
 
+[node name="TargetDistLabel" type="Label" parent="TargetPanel"]
+offset_left = 5.0
+offset_top = 42.0
+offset_right = 240.0
+offset_bottom = 57.0
+text = "距离: --"
+theme_override_colors/font_color = Color(0.6, 0.6, 0.7, 1)
+theme_override_font_sizes/font_size = 10
+
 [node name="TargetShieldBar" type="ProgressBar" parent="TargetPanel"]
 offset_left = 5.0
-offset_top = 35.0
+offset_top = 65.0
 offset_right = 240.0
-offset_bottom = 50.0
+offset_bottom = 80.0
 max_value = 100.0
 value = 100.0
 show_percentage = false
@@ -164,9 +206,9 @@ theme_override_styles/fill = SubResource("shield_fill")
 
 [node name="TargetArmorBar" type="ProgressBar" parent="TargetPanel"]
 offset_left = 5.0
-offset_top = 55.0
+offset_top = 85.0
 offset_right = 240.0
-offset_bottom = 70.0
+offset_bottom = 100.0
 max_value = 100.0
 value = 100.0
 show_percentage = false
@@ -175,14 +217,44 @@ theme_override_styles/fill = SubResource("armor_fill")
 
 [node name="TargetHullBar" type="ProgressBar" parent="TargetPanel"]
 offset_left = 5.0
-offset_top = 75.0
+offset_top = 105.0
 offset_right = 240.0
-offset_bottom = 90.0
+offset_bottom = 120.0
 max_value = 100.0
 value = 100.0
 show_percentage = false
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("hull_fill")
+
+[node name="BtnApproach" type="Button" parent="TargetPanel"]
+offset_left = 5.0
+offset_top = 130.0
+offset_right = 78.0
+offset_bottom = 150.0
+text = "靠近"
+theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
+theme_override_colors/font_hover_color = Color(0.5, 1, 1, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="BtnOrbit" type="Button" parent="TargetPanel"]
+offset_left = 83.0
+offset_top = 130.0
+offset_right = 156.0
+offset_bottom = 150.0
+text = "环绕"
+theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
+theme_override_colors/font_hover_color = Color(0.5, 1, 1, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="BtnWarp" type="Button" parent="TargetPanel"]
+offset_left = 161.0
+offset_top = 130.0
+offset_right = 244.0
+offset_bottom = 150.0
+text = "跃迁"
+theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
+theme_override_colors/font_hover_color = Color(0.5, 1, 1, 1)
+theme_override_font_sizes/font_size = 11
 
 [node name="TopBar" type="Panel" parent="."]
 anchor_left = 0.0
@@ -255,19 +327,28 @@ theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 10
 
 [node name="DistHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
-offset_left = 124.0
-offset_right = 220.0
+offset_left = 104.0
+offset_right = 176.0
 offset_bottom = 20.0
-custom_minimum_size = Vector2(80, 20)
+custom_minimum_size = Vector2(65, 20)
 text = "距离"
 theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 10
 
-[node name="TypeHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
-offset_left = 208.0
-offset_right = 300.0
+[node name="SpeedHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
+offset_left = 180.0
+offset_right = 246.0
 offset_bottom = 20.0
-custom_minimum_size = Vector2(80, 20)
+custom_minimum_size = Vector2(60, 20)
+text = "速度"
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="TypeHeader" type="Label" parent="OverviewPanel/ColumnHeader"]
+offset_left = 250.0
+offset_right = 310.0
+offset_bottom = 20.0
+custom_minimum_size = Vector2(60, 20)
 text = "类型"
 theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 10
@@ -275,7 +356,7 @@ theme_override_font_sizes/font_size = 10
 [node name="ScrollContainer" type="ScrollContainer" parent="OverviewPanel"]
 offset_left = 0.0
 offset_top = 55.0
-offset_right = 310.0
+offset_right = 0.0
 offset_bottom = 0.0
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -283,10 +364,36 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="OverviewList" type="VBoxContainer" parent="OverviewPanel/ScrollContainer"]
-offset_right = 310.0
-offset_bottom = 20.0
+offset_left = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="SpawnButton" type="Button" parent="."]
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -100.0
+offset_right = 100.0
+offset_top = -110.0
+offset_bottom = -80.0
+text = "召唤敌舰"
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+theme_override_colors/font_hover_color = Color(0.5, 0.8, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.3, 0.3, 1)
+
+[node name="CamDistLabel" type="Label" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_right = -10.0
+offset_top = -30.0
+offset_bottom = -10.0
+horizontal_alignment = 2
+text = "---"
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 0.7)
+theme_override_font_sizes/font_size = 10
 
 [node name="MessageLog" type="RichTextLabel" parent="."]
 anchor_left = 0.5
@@ -298,6 +405,9 @@ offset_right = -10.0
 offset_top = -200.0
 offset_bottom = -10.0
 theme_override_colors/default_color = Color(0.7, 0.7, 0.7, 0.7)
+
+[node name="OverviewContextMenu" type="PopupMenu" parent="."]
+script = ExtResource("1_w3nhd")
 scroll_active = false
 bbcode_enabled = true
 fit_content_height = true
