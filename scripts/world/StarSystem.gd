@@ -37,14 +37,13 @@ func _generate_asteroids() -> void:
 			var angle = randf() * 2.0 * PI
 			var radius = randf_range(2000.0, system_radius * 0.8)
 			var height = randf_range(-1000.0, 1000.0)
-			var pos = Vector3(
+			asteroid.global_position = Vector3(
 				cos(angle) * radius,
 				height,
 				sin(angle) * radius
 			)
 			
 			add_child(asteroid)
-			asteroid.global_position = pos  # 先 add_child，再设位置，避免 !is_inside_tree 警告
 
 func _generate_npcs() -> void:
 	if not npc_scene:
@@ -55,13 +54,12 @@ func _generate_npcs() -> void:
 		if npc:
 			var angle = randf() * 2.0 * PI
 			var radius = randf_range(5000.0, system_radius * 0.6)
-			var pos = Vector3(
+			npc.global_position = Vector3(
 				cos(angle) * radius,
 				randf_range(-200.0, 200.0),
 				sin(angle) * radius
 			)
 			add_child(npc)
-			npc.global_position = pos
 
 func _generate_stations() -> void:
 	if not station_scene:
@@ -72,14 +70,13 @@ func _generate_stations() -> void:
 		if station:
 			var angle = randf() * 2.0 * PI
 			var radius = randf_range(3000.0, 5000.0)
-			var pos = Vector3(
+			station.station_name = system_name + " - 空间站 " + str(i + 1)
+			station.global_position = Vector3(
 				cos(angle) * radius,
 				0,
 				sin(angle) * radius
 			)
-			station.station_name = system_name + " - 空间站 " + str(i + 1)
 			add_child(station)
-			station.global_position = pos
 
 ## 获取安全等级描述
 func get_security_text() -> String:

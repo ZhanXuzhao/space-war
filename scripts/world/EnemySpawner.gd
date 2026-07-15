@@ -6,10 +6,8 @@ class_name EnemySpawner
 
 signal enemy_spawned(enemy: Ship)
 
-@export var spawn_interval_min: float = 15.0   # 最短生成间隔（秒）
-@export var spawn_interval_max: float = 45.0   # 最长生成间隔（秒）
-@export var spawn_distance_min: float = 5000.0  # 最小生成距离（距玩家）
-@export var spawn_distance_max: float = 15000.0 # 最大生成距离（距玩家）
+@export var spawn_distance_min: float = 3000.0  # 最小生成距离（距玩家）
+@export var spawn_distance_max: float = 10000.0 # 最大生成距离（距玩家）
 @export var max_enemies: int = 8               # 最大同时存在敌人数
 @export var wave_size: int = 3                 # 每波召唤数量
 @export var npc_scene: PackedScene             # NPC飞船场景
@@ -17,11 +15,6 @@ signal enemy_spawned(enemy: Ship)
 
 var player_ship: Ship = null
 var current_enemies: Array[Ship] = []
-var spawn_timer: float = 0.0
-
-## 随机飞船名字 (由 Ship.gd 自动生成)
-var next_spawn_time: float = 0.0
-var is_active: bool = false
 
 func _ready() -> void:
 	# 等待一帧确保场景完全加载
@@ -33,19 +26,9 @@ func _ready() -> void:
 		await get_tree().create_timer(0.5).timeout
 		_find_player()
 	
-	# 自动启动
+	# 不自动启动生成，仅保留手动召唤功能
 	if npc_scene:
-		start()
-		print("EnemySpawner: 已启动，玩家=", player_ship, " 场景=", npc_scene.resource_path)
-	
-	# 开局立即生成第一波（等找到玩家后）
-	if player_ship:
-		_spawn_initial_wave()
-	else:
-		# 玩家还没找到，延迟后再生成
-		await get_tree().create_timer(1.0).timeout
-		if player_ship and is_active:
-			_spawn_initial_wave()
+		print("EnemySpawner: 就绪（手动召唤模式），场景=", npc_scene.resource_path)
 
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
@@ -54,34 +37,12 @@ func _find_player() -> void:
 	if not player_ship:
 		player_ship = get_node_or_null("/root/SpaceWar/PlayerShip") as Ship
 
-func start() -> void:
-	is_active = true
-	set_process(true)
-
-func stop() -> void:
-	is_active = false
-	set_process(false)
-
-func _process(delta: float) -> void:
-	if not is_active:
-		return
-	
-	# 如果还没找到玩家飞船，持续尝试
+func _process(_delta: float) -> void:
+	# 仅用于持续查找玩家（手动召唤时需要玩家位置）
 	if not player_ship or not is_instance_valid(player_ship):
 		_find_player()
-		return
-	
-	if not player_ship.is_alive:
-		return
-	
 	# 清理已销毁的敌人
 	_cleanup_destroyed()
-	
-	spawn_timer += delta
-	if spawn_timer >= next_spawn_time:
-		spawn_timer = 0.0
-		next_spawn_time = randf_range(spawn_interval_min, spawn_interval_max)
-		_try_spawn_enemy()
 
 func _cleanup_destroyed() -> void:
 	current_enemies = current_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive)
@@ -144,11 +105,6 @@ func _start_warp_effect(pos: Vector3) -> void:
 	tween.tween_property(warp_marker, "scale", Vector3(3, 3, 3), 0.8)
 	tween.parallel().tween_property(warp_marker.mesh, "material:albedo_color:a", 0.0, 0.8)
 	tween.tween_callback(warp_marker.queue_free)
-
-## 开局立即生成一波敌人
-func _spawn_initial_wave() -> void:
-	print("EnemySpawner: 开局生成第一波敌舰")
-	next_spawn_time = 1.0  # 第一波后快速进入正常循环
 
 ## 手动召唤一波敌人（由按钮触发）
 func spawn_wave(count: int = -1) -> void:
