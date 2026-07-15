@@ -11,7 +11,7 @@ class_name ShipData
 @export var shield_hp: float = 800.0
 @export var capacitor_max: float = 400.0
 @export var capacitor_recharge_rate: float = 20.0  # 每秒恢复
-@export var max_speed: float = 280.0
+@export var max_speed: float = 1000.0
 @export var warp_speed: float = 3.0  # AU/s
 @export var mass: float = 1200000.0
 @export var cargo_capacity: float = 500.0

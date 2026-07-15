@@ -168,22 +168,68 @@ func _detect_hostiles() -> void:
 			current_state = AIState.ENGAGE
 			owner_ship.lock_target(current_target)
 
-## 环绕目标飞行
+## 三维环绕目标飞行（径向+切向速度分配优化）
+## 原理：将速度分解为径向（朝向/远离目标）和切向（环绕）分量
+## - 距离过远/过近时，径向分量优先，快速修正距离
+## - 距离适当时，切向分量为主，维持稳定环绕
 func _orbit_target(delta: float) -> void:
 	if not current_target:
 		return
 	
-	orbit_angle += delta * 0.5  # 环绕速度
+	var ship_pos = owner_ship.global_position
+	var target_pos = current_target.global_position
+	var to_target = target_pos - ship_pos
+	var distance = to_target.length()
 	
-	var orbit_pos = current_target.global_position
-	var offset = Vector3(
-		cos(orbit_angle) * orbit_range,
-		sin(orbit_angle * 0.3) * 100.0,  # 上下浮动
-		sin(orbit_angle) * orbit_range
+	if distance < 1.0:
+		return
+	
+	orbit_angle += delta * 0.5
+	
+	# 径向方向（从飞船指向目标）
+	var radial_dir = to_target / distance
+	
+	# 切向方向（与径向垂直，在水平面上）
+	var tangential_dir = radial_dir.cross(Vector3.UP)
+	if tangential_dir.length() < 0.01:
+		tangential_dir = Vector3.RIGHT
+	tangential_dir = tangential_dir.normalized()
+	
+	# 垂直方向（与径向和切向都垂直，产生立体轨迹）
+	var vertical_dir = radial_dir.cross(tangential_dir).normalized()
+	
+	var max_speed = owner_ship.max_speed
+	var distance_error = distance - orbit_range
+	var abs_error = abs(distance_error)
+	var dead_zone = orbit_range * 0.2  # 20% 死区
+	
+	# ===== 径向速度：根据距离误差分配 =====
+	# 距离误差越大，径向分配越多，以快速修正距离
+	var radial_speed = 0.0
+	if abs_error > dead_zone:
+		# 超出死区：径向优先，全力修正距离
+		var factor = minf(abs_error / (orbit_range * 0.5), 1.0)
+		radial_speed = sign(distance_error) * max_speed * factor
+	else:
+		# 在死区内：温和的径向修正
+		radial_speed = distance_error * 0.3
+	
+	# ===== 切向速度：维持环绕运动 =====
+	# 距离偏差越大，切向分配越少（让路给径向修正）
+	var radial_factor = minf(abs_error / maxf(dead_zone, 1.0), 1.0)
+	var tangential_speed = max_speed * 0.6 * (1.0 - radial_factor * 0.8)
+	
+	# ===== 垂直速度：立体起伏轨迹 =====
+	var vertical_speed = sin(orbit_angle * 0.7) * max_speed * 0.2
+	
+	# ===== 合成最终速度向量 =====
+	var final_velocity = (
+		radial_dir * radial_speed +
+		tangential_dir * tangential_speed +
+		vertical_dir * vertical_speed
 	)
 	
-	var target_pos = orbit_pos + offset
-	owner_ship.order_move_to(target_pos)
+	owner_ship.order_set_velocity(final_velocity)
 
 ## 射击武器
 func _fire_weapons(delta: float) -> void:

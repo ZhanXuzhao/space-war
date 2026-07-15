@@ -52,7 +52,7 @@ func init_player_data() -> void:
 		"shield_max": 800,
 		"capacitor_max": 400,
 		"capacitor_recharge": 20.0,
-		"max_speed": 280.0,
+		"max_speed": 1000.0,
 		"warp_speed": 3.0,
 		"mass": 1200000,
 		"cargo_capacity": 500,

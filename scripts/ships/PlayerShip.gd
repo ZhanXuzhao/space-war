@@ -24,6 +24,11 @@ var auto_fire: bool = false
 var auto_fire_timer: float = 0.0
 const AUTO_FIRE_INTERVAL: float = 0.5  # 自动开火检测间隔
 
+## 环绕目标
+var orbit_target: Node3D = null
+var orbit_range: float = 1200.0
+var orbit_angle: float = 0.0
+
 ## 模块管理
 var module_manager: Node
 
@@ -69,6 +74,9 @@ func _physics_process(delta: float) -> void:
 
 ## 正常飞行模式
 func _process_normal_flight(delta: float) -> void:
+	# 环绕目标飞行
+	_update_orbit(delta)
+	
 	# 到达目标点后减速
 	if has_move_order:
 		var dist = global_position.distance_to(move_target)
@@ -84,7 +92,18 @@ func _process_normal_flight(delta: float) -> void:
 
 ## 移动处理
 func _handle_movement(delta: float) -> void:
-	if has_move_order and is_alive:
+	if has_velocity_order:
+		# 速度指令模式（环绕时径向/切向速度分配）
+		var target_speed = velocity_setpoint.length()
+		if target_speed > 0.01 and is_alive:
+			var target_dir = velocity_setpoint / target_speed
+			var target_basis = Basis.looking_at(target_dir, Vector3.UP)
+			global_basis = global_basis.slerp(target_basis, rotation_speed * delta)
+			current_speed = move_toward(current_speed, target_speed, acceleration * delta)
+		else:
+			current_speed = move_toward(current_speed, 0.0, deceleration * delta)
+		velocity = -global_basis.z * current_speed
+	elif has_move_order and is_alive:
 		var direction = (move_target - global_position).normalized()
 		var distance = global_position.distance_to(move_target)
 		
@@ -106,11 +125,104 @@ func _handle_movement(delta: float) -> void:
 	
 	move_and_slide()
 
-## 鼠标右键 - 移动到目标位置
+## 鼠标右键 - 移动到目标位置（会取消环绕）
 func order_move_to(position: Vector3) -> void:
 	if flight_mode != FlightMode.NORMAL:
 		return
+	# 手动移动时取消环绕
+	if orbit_target:
+		cancel_orbit()
 	super.order_move_to(position)
+
+## 环绕轨迹追踪
+var _trajectory_shown_target: Ship = null
+const ORBIT_TRAJECTORY_RADIUS: float = 1200.0
+
+## 环绕目标飞行（径向+切向速度分配优化）
+## 将速度分解为径向（修正距离）和切向（维持环绕）分量
+func _update_orbit(delta: float) -> void:
+	if not orbit_target or not is_instance_valid(orbit_target):
+		if orbit_target:
+			cancel_orbit()
+		return
+	if flight_mode != FlightMode.NORMAL:
+		return
+	
+	var ship_pos = global_position
+	var target_pos = orbit_target.global_position
+	var to_target = target_pos - ship_pos
+	var distance = to_target.length()
+	
+	if distance < 1.0:
+		return
+	
+	orbit_angle += delta * 0.5
+	
+	# 径向方向（从飞船指向目标）
+	var radial_dir = to_target / distance
+	
+	# 切向方向（与径向垂直，在水平面上）
+	var tangential_dir = radial_dir.cross(Vector3.UP)
+	if tangential_dir.length() < 0.01:
+		tangential_dir = Vector3.RIGHT
+	tangential_dir = tangential_dir.normalized()
+	
+	# 垂直方向（产生立体轨迹）
+	var vertical_dir = radial_dir.cross(tangential_dir).normalized()
+	
+	var distance_error = distance - orbit_range
+	var abs_error = abs(distance_error)
+	var dead_zone = orbit_range * 0.2
+	
+	# ===== 径向速度：根据距离误差分配 =====
+	var radial_speed = 0.0
+	if abs_error > dead_zone:
+		# 超出死区：径向优先，全力修正距离
+		var factor = minf(abs_error / (orbit_range * 0.5), 1.0)
+		radial_speed = sign(distance_error) * max_speed * factor
+	else:
+		# 在死区内：温和的径向修正
+		radial_speed = distance_error * 0.3
+	
+	# ===== 切向速度：维持环绕 =====
+	var radial_factor = minf(abs_error / maxf(dead_zone, 1.0), 1.0)
+	var tangential_speed = max_speed * 0.6 * (1.0 - radial_factor * 0.8)
+	
+	# ===== 垂直速度：立体起伏 =====
+	var vertical_speed = sin(orbit_angle * 0.7) * max_speed * 0.2
+	
+	# ===== 合成最终速度向量 =====
+	var final_velocity = (
+		radial_dir * radial_speed +
+		tangential_dir * tangential_speed +
+		vertical_dir * vertical_speed
+	)
+	
+	order_set_velocity(final_velocity)
+
+## 命令飞船环绕目标飞行
+func order_orbit(target: Node3D, range: float = 1200.0) -> void:
+	if not target or not is_instance_valid(target):
+		return
+	
+	# 显示环绕轨迹
+	if target is Ship and target.is_alive:
+		_update_trajectory_visual(_trajectory_shown_target, target)
+	
+	orbit_target = target
+	orbit_range = range
+	orbit_angle = 0.0
+	
+	add_message("开始环绕: " + target.name, Color(0.3, 0.8, 1))
+
+## 取消环绕
+func cancel_orbit() -> void:
+	if orbit_target and is_instance_valid(orbit_target):
+		if orbit_target is Ship:
+			orbit_target.hide_orbit_trajectory()
+			_trajectory_shown_target = null
+	orbit_target = null
+	has_velocity_order = false
 
 ## 鼠标左键 - 选择/锁定目标
 func try_lock_ship(target: Ship) -> void:
@@ -124,6 +236,7 @@ func try_lock_ship(target: Ship) -> void:
 		target_locked.emit(target)
 	else:
 		lock_target(target)
+		set_active_target(target)
 
 ## 跃迁到位置 (Warp)
 func warp_to(target_pos: Vector3) -> void:
@@ -203,7 +316,23 @@ func _handle_right_click_move() -> void:
 		var move_pos = origin + direction * 5000.0
 		order_move_to(move_pos)
 
-## 设置自动攻击模式
+func set_active_target(target: Ship) -> void:
+	super.set_active_target(target)
+
+## 刷新环绕轨迹：旧目标隐藏、新目标显示
+func _update_trajectory_visual(old_target: Ship, new_target: Ship) -> void:
+	if old_target and is_instance_valid(old_target):
+		old_target.hide_orbit_trajectory()
+	if new_target and new_target.is_alive:
+		new_target.show_orbit_trajectory(ORBIT_TRAJECTORY_RADIUS)
+	_trajectory_shown_target = new_target
+
+func unlock_target(target: Ship) -> void:
+	if target == _trajectory_shown_target and is_instance_valid(target):
+		target.hide_orbit_trajectory()
+		_trajectory_shown_target = null
+	super.unlock_target(target)
+
 func set_auto_fire(enabled: bool) -> void:
 	auto_fire = enabled
 	if enabled:
@@ -251,11 +380,11 @@ func _update_camera() -> void:
 	# 有锁定目标时，相机以目标为中心环绕
 	if camera_focus_target and is_instance_valid(camera_focus_target) and camera_focus_target.is_inside_tree():
 		var target_pos = camera_focus_target.global_position
-		_camera.position = target_pos + offset - global_position
+		_camera.global_position = target_pos + offset
 		_camera.look_at(target_pos, Vector3.UP)
 	else:
 		camera_focus_target = null
-		_camera.position = offset
+		_camera.global_position = global_position + offset
 		_camera.look_at(global_position, Vector3.UP)
 
 ## 键盘快捷键

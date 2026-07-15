@@ -18,7 +18,7 @@ signal target_lost(target: Ship)
 @export var max_hull: float = 800.0
 @export var max_capacitor: float = 400.0
 @export var capacitor_recharge: float = 20.0  # 每秒恢复量
-@export var max_speed: float = 280.0
+@export var max_speed: float = 1000.0
 @export var acceleration: float = 100.0
 @export var deceleration: float = 50.0
 @export var rotation_speed: float = 2.0
@@ -37,6 +37,10 @@ var is_alive: bool = true
 ## 移动控制（由 PlayerShip 或 AI 驱动）
 var has_move_order: bool = false
 var move_target: Vector3 = Vector3.ZERO
+
+## 速度指令模式（用于环绕时径向/切向速度分配）
+var has_velocity_order: bool = false
+var velocity_setpoint: Vector3 = Vector3.ZERO
 
 ## 目标与战斗
 var locked_targets: Array[Ship] = []
@@ -134,7 +138,18 @@ func _physics_process(delta: float) -> void:
 
 ## 基础移动逻辑（所有飞船共用，PlayerShip 可覆写增强）
 func _handle_movement(delta: float) -> void:
-	if has_move_order:
+	if has_velocity_order:
+		# 速度指令模式：面向速度方向并加速到目标速度
+		var target_speed = velocity_setpoint.length()
+		if target_speed > 0.01:
+			var target_dir = velocity_setpoint / target_speed
+			var target_basis = Basis.looking_at(target_dir, Vector3.UP)
+			global_basis = global_basis.slerp(target_basis, rotation_speed * delta)
+			current_speed = move_toward(current_speed, target_speed, acceleration * delta)
+		else:
+			current_speed = move_toward(current_speed, 0.0, deceleration * delta)
+		velocity = -global_basis.z * current_speed
+	elif has_move_order:
 		var direction = (move_target - global_position).normalized()
 		var distance = global_position.distance_to(move_target)
 		
@@ -239,6 +254,13 @@ func set_active_target(target: Ship) -> void:
 func order_move_to(position: Vector3) -> void:
 	move_target = position
 	has_move_order = true
+	has_velocity_order = false
+
+## 速度指令模式：直接指定目标速度向量（用于环绕径向/切向分配）
+func order_set_velocity(target_velocity: Vector3) -> void:
+	has_velocity_order = true
+	has_move_order = false
+	velocity_setpoint = target_velocity
 
 ## 使用电容
 func use_capacitor(amount: float) -> bool:
@@ -260,3 +282,56 @@ func get_shield_percent() -> float:
 
 func get_capacitor_percent() -> float:
 	return current_capacitor / max_capacitor * 100.0
+
+# ---------------------------------------------------------------------------
+# 环绕轨迹可视化
+# ---------------------------------------------------------------------------
+var _trajectory_instance: MeshInstance3D = null
+
+## 显示环绕轨迹圆环（围绕目标，水平面上的圆形）
+func show_orbit_trajectory(radius: float = 1200.0, color: Color = Color(0.3, 0.8, 1.0)) -> void:
+	if not _trajectory_instance:
+		_trajectory_instance = MeshInstance3D.new()
+		_trajectory_instance.name = "OrbitTrajectory"
+		add_child(_trajectory_instance)
+
+	# 用 SurfaceTool 构建线条网格（水平圆形）
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_LINES)
+
+	var segments = 64
+	for i in range(segments):
+		var t1 = (2.0 * PI * i) / segments
+		var t2 = (2.0 * PI * (i + 1)) / segments
+
+		var p1 = Vector3(cos(t1) * radius, 0.0, sin(t1) * radius)
+		var p2 = Vector3(cos(t2) * radius, 0.0, sin(t2) * radius)
+
+		st.add_vertex(p1)
+		st.add_vertex(p2)
+
+	var mesh = st.commit()
+
+	# 发光半透明材质
+	var mat = ORMMaterial3D.new()
+	mat.albedo_color = Color(color.r, color.g, color.b, 0.5)
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 1.2
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mesh.surface_set_material(0, mat)
+
+	_trajectory_instance.mesh = mesh
+	_trajectory_instance.visible = true
+
+## 隐藏环绕轨迹
+func hide_orbit_trajectory() -> void:
+	if _trajectory_instance:
+		_trajectory_instance.visible = false
+
+## 切换环绕轨迹显示
+func toggle_orbit_trajectory(visible: bool, radius: float = 1200.0) -> void:
+	if visible:
+		show_orbit_trajectory(radius)
+	else:
+		hide_orbit_trajectory()

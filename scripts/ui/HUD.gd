@@ -21,12 +21,13 @@ class_name HUD
 @export var btn_approach: Button
 @export var btn_orbit: Button
 @export var btn_warp: Button
+@export var btn_cancel: Button
 @export var overview_list: VBoxContainer
 @export var capacitor_text_label: Label
 @export var isk_label: Label
 @export var cargo_label: Label
 @export var location_label: Label
-@export var message_log: RichTextLabel
+@export var message_log: VBoxContainer
 @export var context_menu: OverviewContextMenu
 @export var spawn_button: Button
 @export var cam_dist_label: Label
@@ -77,6 +78,7 @@ func _ready() -> void:
 	btn_approach = get_node_or_null("TargetPanel/BtnApproach") as Button
 	btn_orbit = get_node_or_null("TargetPanel/BtnOrbit") as Button
 	btn_warp = get_node_or_null("TargetPanel/BtnWarp") as Button
+	btn_cancel = get_node_or_null("TargetPanel/BtnCancel") as Button
 	cam_dist_label = get_node_or_null("TopBar/CamDistLabel") as Label
 	# 手动查找速度标签（场景 NodePath 绑定不生效）
 	if not speed_label:
@@ -85,7 +87,7 @@ func _ready() -> void:
 	if not spawn_button:
 		spawn_button = get_node_or_null("SpawnButton") as Button
 	if not message_log:
-		message_log = get_node_or_null("MessageLog") as RichTextLabel
+		message_log = get_node_or_null("MessageLog") as VBoxContainer
 	
 	# 总览面板四边拖拽缩放
 	for edge in ["HandleLeft", "HandleRight", "HandleTop", "HandleBottom"]:
@@ -156,6 +158,8 @@ func _ready() -> void:
 		btn_orbit.pressed.connect(_on_btn_orbit)
 	if btn_warp:
 		btn_warp.pressed.connect(_on_btn_warp)
+	if btn_cancel:
+		btn_cancel.pressed.connect(_on_btn_cancel)
 	
 	# 连接召唤按钮
 	if spawn_button:
@@ -772,9 +776,8 @@ func _on_btn_approach() -> void:
 func _on_btn_orbit() -> void:
 	if not player_ship or not _target_node or not is_instance_valid(_target_node):
 		return
-	# 环绕：移动到目标附近并保持距离
 	if _target_node is Node3D:
-		player_ship.order_move_to(_target_node.global_position)
+		player_ship.order_orbit(_target_node)
 		add_message("环绕: " + entry_name(_target_node), Color(0.3, 0.8, 1))
 
 func _on_btn_warp() -> void:
@@ -783,6 +786,17 @@ func _on_btn_warp() -> void:
 	if _target_node is Node3D:
 		player_ship.warp_to(_target_node.global_position)
 		add_message("跃迁: " + entry_name(_target_node), Color(0.3, 0.8, 1))
+
+func _on_btn_cancel() -> void:
+	if not player_ship:
+		return
+	# 取消环绕
+	if player_ship.orbit_target:
+		player_ship.cancel_orbit()
+		add_message("已取消环绕", Color(1, 0.6, 0.3))
+	# 清除移动指令
+	player_ship.has_move_order = false
+	player_ship.current_speed = 0.0
 
 ## ====== 召唤敌舰按钮 ======
 
@@ -857,10 +871,23 @@ func _update_cam_dist() -> void:
 		cam_dist_label.text = "镜头: " + _format_distance(dist)
 
 func add_message(text: String, color: Color = Color.WHITE) -> void:
-	if message_log:
-		message_log.push_color(color)
-		message_log.add_text(text + "\n")
-		message_log.pop()
+	if not message_log:
+		return
+	# 创建消息标签
+	var label = Label.new()
+	label.text = text
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", 12)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# 插入到顶部
+	message_log.add_child(label)
+	message_log.move_child(label, 0)
+	# 5秒后自动移除
+	var timer := get_tree().create_timer(5.0)
+	timer.timeout.connect(func():
+		if is_instance_valid(label):
+			label.queue_free()
+	, CONNECT_ONE_SHOT)
 
 func _on_isk_changed(_value: int) -> void:
 	_update_isk_display()

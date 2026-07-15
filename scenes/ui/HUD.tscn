@@ -274,6 +274,17 @@ theme_override_colors/font_hover_color = Color(0.5, 1, 1, 1)
 theme_override_font_sizes/font_size = 11
 text = "跃迁"
 
+[node name="BtnCancel" type="Button" parent="TargetPanel" unique_id=1768924103]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 155.0
+offset_right = 244.0
+offset_bottom = 175.0
+theme_override_colors/font_color = Color(1, 0.4, 0.3, 1)
+theme_override_colors/font_hover_color = Color(1, 0.6, 0.5, 1)
+theme_override_font_sizes/font_size = 11
+text = "取消"
+
 [node name="TopBar" type="Panel" parent="." unique_id=1006633197]
 anchors_preset = 10
 anchor_right = 1.0
@@ -440,17 +451,15 @@ theme_override_colors/font_pressed_color = Color(1, 0.3, 0.3, 1)
 theme_override_colors/font_hover_color = Color(0.5, 0.8, 1, 1)
 text = "召唤敌舰"
 
-[node name="MessageLog" type="RichTextLabel" parent="." unique_id=2108244219]
-anchors_preset = -1
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -569.0
-offset_top = -511.0
-offset_right = -914.0
-offset_bottom = -367.0
-theme_override_colors/default_color = Color(0.7, 0.7, 0.7, 0.7)
+[node name="MessageLog" type="VBoxContainer" parent="." unique_id=2108244219]
+custom_minimum_size = Vector2(300, 300)
+offset_left = 3.0
+offset_top = 43.0
+offset_right = 303.0
+offset_bottom = 343.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+alignment = 0
 
 [node name="OverviewContextMenu" type="PopupMenu" parent="." unique_id=1187790722]
 script = ExtResource("1_w3nhd")

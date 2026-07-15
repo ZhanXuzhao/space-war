@@ -9,7 +9,7 @@ signal enemy_spawned(enemy: Ship)
 @export var spawn_distance_min: float = 3000.0  # 最小生成距离（距玩家）
 @export var spawn_distance_max: float = 10000.0 # 最大生成距离（距玩家）
 @export var max_enemies: int = 8               # 最大同时存在敌人数
-@export var wave_size: int = 3                 # 每波召唤数量
+@export var wave_size: int = 1                 # 每波召唤数量
 @export var npc_scene: PackedScene             # NPC飞船场景
 @export var enable_warp_effect: bool = true     # 是否启用跃迁入场效果
 
