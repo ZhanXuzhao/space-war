@@ -1,12 +1,12 @@
 [gd_scene format=3 uid="uid://c3b1c245ymei3"]
 
 [ext_resource type="PackedScene" uid="uid://c8m84j1qo5sd8" path="res://scenes/player/PlayerShip.tscn" id="1"]
+[ext_resource type="Texture2D" uid="uid://dx84ylxdpwftc" path="res://textures/skybox/ComfyUI_00352_.png" id="1_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://d20i3004nq1fd" path="res://scenes/world/StarSystem.tscn" id="2"]
 [ext_resource type="PackedScene" uid="uid://bwxl37j1p345b" path="res://scenes/ui/HUD.tscn" id="3"]
-[ext_resource type="Texture2D" uid="uid://yleopvo8urrl" path="res://textures/skybox/space_panorama.png" id="4"]
 
 [sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_1bvp3"]
-panorama = ExtResource("4")
+panorama = ExtResource("1_1bvp3")
 
 [sub_resource type="Sky" id="sky"]
 resource_local_to_scene = true
