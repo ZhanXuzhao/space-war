@@ -25,6 +25,24 @@ var mining_yield_total: int = 0
 
 func _ready() -> void:
 	init_player_data()
+	# DEBUG: 延迟几帧后检查场景树
+	get_tree().create_timer(0.1).timeout.connect(_debug_scene_tree)
+
+func _debug_scene_tree() -> void:
+	print("=== DEBUG: 场景树检查 ===")
+	_dump_node(get_tree().root, 0)
+	print("=== DEBUG: 结束 ===")
+
+func _dump_node(node: Node, depth: int) -> void:
+	var indent = ""
+	for i in depth:
+		indent += "  "
+	var info = indent + node.name + " (" + node.get_class() + ")"
+	if "instance" in node and node.get("instance") != null:
+		info += " [INSTANCE]"
+	print(info)
+	for c in node.get_children():
+		_dump_node(c, depth + 1)
 
 func init_player_data() -> void:
 	player_ship_data = {
