@@ -67,22 +67,7 @@ func _ready() -> void:
 	btn_approach = get_node_or_null("TargetPanel/BtnApproach") as Button
 	btn_orbit = get_node_or_null("TargetPanel/BtnOrbit") as Button
 	btn_warp = get_node_or_null("TargetPanel/BtnWarp") as Button
-	cam_dist_label = get_node_or_null("CamDistLabel") as Label
-	if not cam_dist_label:
-		# 如果找不到，在代码中创建一个
-		cam_dist_label = Label.new()
-		cam_dist_label.name = "CamDistLabel"
-		cam_dist_label.anchor_right = 1.0
-		cam_dist_label.anchor_bottom = 1.0
-		cam_dist_label.offset_left = -200.0
-		cam_dist_label.offset_right = -10.0
-		cam_dist_label.offset_top = -30.0
-		cam_dist_label.offset_bottom = -10.0
-		cam_dist_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		cam_dist_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6, 0.7))
-		cam_dist_label.add_theme_font_size_override("font_size", 10)
-		cam_dist_label.text = "---"
-		add_child(cam_dist_label)
+	cam_dist_label = get_node_or_null("TopBar/CamDistLabel") as Label
 	# 总览空白区域点击 → 清除相机锁定
 	if overview_list:
 		overview_list.mouse_filter = Control.MOUSE_FILTER_STOP

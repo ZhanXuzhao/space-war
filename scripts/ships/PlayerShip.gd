@@ -31,7 +31,7 @@ var module_manager: Node
 @export var camera_orbit_speed: float = 0.005
 @export var camera_zoom_speed: float = 5.0
 @export var camera_min_distance: float = 50.0
-@export var camera_max_distance: float = 500000.0
+@export var camera_max_distance: float = 50000.0
 @export var camera_default_distance: float = 900.0
 
 var _camera: Camera3D
@@ -301,10 +301,10 @@ func _input(event: InputEvent) -> void:
 			_cam_elevation += event.relative.y * camera_orbit_speed * rad_to_deg(1.0)
 			_cam_elevation = clampf(_cam_elevation, -89.0, 89.0)
 	
-	# 滚轮 - 拉近拉远
+	# 滚轮 - 往前滚拉远，往后滚拉近
 	var zoom_step = camera_max_distance * 0.02
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			_cam_distance = maxf(camera_min_distance, _cam_distance - zoom_step)
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			_cam_distance = minf(camera_max_distance, _cam_distance + zoom_step)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			_cam_distance = maxf(camera_min_distance, _cam_distance - zoom_step)
