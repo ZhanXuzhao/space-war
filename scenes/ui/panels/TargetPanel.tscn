@@ -20,7 +20,7 @@ bg_color = Color(0.9, 0.7, 0.1, 0.8)
 [sub_resource type="StyleBoxFlat" id="hull_fill"]
 bg_color = Color(1, 0.4, 0.1, 0.8)
 
-[node name="TargetPanel" type="Panel"]
+[node name="TargetPanel" type="Panel" unique_id=624457764]
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
@@ -31,16 +31,15 @@ offset_bottom = 256.0
 grow_horizontal = 0
 theme_override_styles/panel = SubResource("overview_bg")
 script = ExtResource("1_draggable")
-metadata/_edit_group_ = true
 
-[node name="HandleLeft" type="Control" parent="."]
+[node name="HandleLeft" type="Control" parent="." unique_id=95356873]
 anchors_preset = 0
 anchor_bottom = 1.0
 offset_left = -4.0
 offset_right = 4.0
 mouse_default_cursor_shape = 10
 
-[node name="HandleRight" type="Control" parent="."]
+[node name="HandleRight" type="Control" parent="." unique_id=952764724]
 anchors_preset = 0
 anchor_left = 1.0
 anchor_right = 1.0
@@ -49,14 +48,14 @@ offset_left = -4.0
 offset_right = 4.0
 mouse_default_cursor_shape = 10
 
-[node name="HandleTop" type="Control" parent="."]
+[node name="HandleTop" type="Control" parent="." unique_id=2056328127]
 anchors_preset = 0
 anchor_right = 1.0
 offset_top = -4.0
 offset_bottom = 4.0
 mouse_default_cursor_shape = 9
 
-[node name="HandleBottom" type="Control" parent="."]
+[node name="HandleBottom" type="Control" parent="." unique_id=927125478]
 anchors_preset = 0
 anchor_top = 1.0
 anchor_right = 1.0
@@ -65,13 +64,13 @@ offset_top = -4.0
 offset_bottom = 4.0
 mouse_default_cursor_shape = 9
 
-[node name="HeaderBg" type="Panel" parent="."]
+[node name="HeaderBg" type="Panel" parent="." unique_id=857369015]
 layout_mode = 0
 anchor_right = 1.0
 offset_bottom = 28.0
 theme_override_styles/panel = SubResource("overview_header_bg")
 
-[node name="HeaderLabel" type="Label" parent="HeaderBg"]
+[node name="HeaderLabel" type="Label" parent="HeaderBg" unique_id=743987192]
 layout_mode = 0
 anchor_right = 1.0
 offset_left = 5.0
@@ -81,7 +80,7 @@ offset_bottom = 24.0
 theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
 text = "目 标 信 息"
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=749904827]
 layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -90,24 +89,24 @@ offset_top = 32.0
 offset_right = -5.0
 offset_bottom = -5.0
 
-[node name="TargetType" type="Label" parent="VBoxContainer"]
+[node name="TargetType" type="Label" parent="VBoxContainer" unique_id=1417666888]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.5, 0.2, 1)
 theme_override_font_sizes/font_size = 10
 text = "敌对"
 
-[node name="TargetName" type="Label" parent="VBoxContainer"]
+[node name="TargetName" type="Label" parent="VBoxContainer" unique_id=578992946]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
 text = "目标: 无"
 
-[node name="TargetDistLabel" type="Label" parent="VBoxContainer"]
+[node name="TargetDistLabel" type="Label" parent="VBoxContainer" unique_id=1720689371]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.6, 0.7, 1)
 theme_override_font_sizes/font_size = 10
 text = "距离: --"
 
-[node name="TargetShieldBar" type="ProgressBar" parent="VBoxContainer"]
+[node name="TargetShieldBar" type="ProgressBar" parent="VBoxContainer" unique_id=798115436]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/background = SubResource("bg_style")
@@ -115,7 +114,7 @@ theme_override_styles/fill = SubResource("shield_fill")
 value = 100.0
 show_percentage = false
 
-[node name="TargetArmorBar" type="ProgressBar" parent="VBoxContainer"]
+[node name="TargetArmorBar" type="ProgressBar" parent="VBoxContainer" unique_id=2099777184]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/background = SubResource("bg_style")
@@ -123,7 +122,7 @@ theme_override_styles/fill = SubResource("armor_fill")
 value = 100.0
 show_percentage = false
 
-[node name="TargetHullBar" type="ProgressBar" parent="VBoxContainer"]
+[node name="TargetHullBar" type="ProgressBar" parent="VBoxContainer" unique_id=1722419774]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/background = SubResource("bg_style")
@@ -131,10 +130,10 @@ theme_override_styles/fill = SubResource("hull_fill")
 value = 100.0
 show_percentage = false
 
-[node name="ActionBtnHBox" type="HBoxContainer" parent="VBoxContainer"]
+[node name="ActionBtnHBox" type="HBoxContainer" parent="VBoxContainer" unique_id=845044620]
 layout_mode = 2
 
-[node name="BtnApproach" type="Button" parent="VBoxContainer/ActionBtnHBox"]
+[node name="BtnApproach" type="Button" parent="VBoxContainer/ActionBtnHBox" unique_id=1163477986]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
@@ -142,7 +141,7 @@ theme_override_colors/font_hover_color = Color(0.5, 1, 1, 1)
 theme_override_font_sizes/font_size = 11
 text = "靠近"
 
-[node name="BtnOrbit" type="Button" parent="VBoxContainer/ActionBtnHBox"]
+[node name="BtnOrbit" type="Button" parent="VBoxContainer/ActionBtnHBox" unique_id=405235781]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
@@ -150,7 +149,7 @@ theme_override_colors/font_hover_color = Color(0.5, 1, 1, 1)
 theme_override_font_sizes/font_size = 11
 text = "环绕"
 
-[node name="BtnWarp" type="Button" parent="VBoxContainer/ActionBtnHBox"]
+[node name="BtnWarp" type="Button" parent="VBoxContainer/ActionBtnHBox" unique_id=176264446]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
@@ -158,18 +157,10 @@ theme_override_colors/font_hover_color = Color(0.5, 1, 1, 1)
 theme_override_font_sizes/font_size = 11
 text = "跃迁"
 
-[node name="BtnAttack" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.3, 0.2, 1)
-theme_override_colors/font_hover_color = Color(1, 0.5, 0.4, 1)
-theme_override_font_sizes/font_size = 11
-text = "⚔ 攻击"
-
-[node name="LockBtnHBox" type="HBoxContainer" parent="VBoxContainer"]
+[node name="LockBtnHBox" type="HBoxContainer" parent="VBoxContainer" unique_id=1307840758]
 layout_mode = 2
 
-[node name="BtnLock" type="Button" parent="VBoxContainer/LockBtnHBox"]
+[node name="BtnLock" type="Button" parent="VBoxContainer/LockBtnHBox" unique_id=555785655]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
@@ -177,10 +168,18 @@ theme_override_colors/font_hover_color = Color(0.5, 1, 1, 1)
 theme_override_font_sizes/font_size = 11
 text = "🔒 锁定"
 
-[node name="BtnUnlock" type="Button" parent="VBoxContainer/LockBtnHBox"]
+[node name="BtnUnlock" type="Button" parent="VBoxContainer/LockBtnHBox" unique_id=1689595822]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 0.5, 0.3, 1)
 theme_override_colors/font_hover_color = Color(1, 0.7, 0.5, 1)
 theme_override_font_sizes/font_size = 11
 text = "🔓 解除锁定"
+
+[node name="BtnAttack" type="Button" parent="VBoxContainer" unique_id=2035441270]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.3, 0.2, 1)
+theme_override_colors/font_hover_color = Color(1, 0.5, 0.4, 1)
+theme_override_font_sizes/font_size = 11
+text = "⚔ 攻击"
