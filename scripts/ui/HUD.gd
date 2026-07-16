@@ -36,6 +36,7 @@ class_name HUD
 @export var context_menu: OverviewContextMenu
 @export var spawn_button: Button
 @export var new_game_button: Button
+@export var restart_game_button: Button
 @export var cam_dist_label: Label
 @export var menu_panel: Panel
 @export var btn_lock: Button
@@ -145,6 +146,8 @@ func _ready() -> void:
 		spawn_button = get_node_or_null("MenuPanel/SpawnButton") as Button
 	if not new_game_button:
 		new_game_button = get_node_or_null("MenuPanel/NewGameButton") as Button
+	if not restart_game_button:
+		restart_game_button = get_node_or_null("MenuPanel/RestartGameButton") as Button
 	if not message_log:
 		message_log = get_node_or_null("MessageLog") as VBoxContainer
 	
@@ -235,6 +238,10 @@ func _ready() -> void:
 	# 连接新建游戏按钮
 	if new_game_button:
 		new_game_button.pressed.connect(_on_new_game_pressed)
+	
+	# 连接重开游戏按钮
+	if restart_game_button:
+		restart_game_button.pressed.connect(_on_restart_game_pressed)
 
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
@@ -1217,13 +1224,14 @@ func _on_new_game_pressed() -> void:
 	# 重新加载主场景
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
+func _on_restart_game_pressed() -> void:
+	# 直接重新加载主场景，不重置数据
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
+
 func _delete_save_files() -> void:
-	# 删除面板布局存档
+	# 删除面板布局存档（含自动锁定/攻击设置）
 	if FileAccess.file_exists(PANEL_SAVE_PATH):
 		DirAccess.remove_absolute(PANEL_SAVE_PATH)
-	# 删除自动设置存档
-	if FileAccess.file_exists(AUTO_SETTINGS_PATH):
-		DirAccess.remove_absolute(AUTO_SETTINGS_PATH)
 
 static func entry_name(node: Node) -> String:
 	if node is Ship and node.ship_data:
@@ -1270,9 +1278,12 @@ func _save_panel_layout() -> void:
 		cfg.set_value("EquipmentPanel", "offset_top", weapon.offset_top)
 		cfg.set_value("EquipmentPanel", "offset_right", weapon.offset_right)
 		cfg.set_value("EquipmentPanel", "offset_bottom", weapon.offset_bottom)
+	# 保存自动锁定/攻击勾选状态
+	if auto_lock_check:
+		cfg.set_value("AutoSettings", "auto_lock", auto_lock_check.button_pressed)
+	if auto_attack_check:
+		cfg.set_value("AutoSettings", "auto_attack", auto_attack_check.button_pressed)
 	cfg.save(PANEL_SAVE_PATH)
-	# 保存自动锁定/攻击勾选状态（用独立文件避免 ConfigFile.get_value 类型推断 bug）
-	_save_auto_settings()
 
 func _load_panel_layout() -> void:
 	var cfg = ConfigFile.new()
@@ -1313,35 +1324,18 @@ func _load_panel_layout() -> void:
 			weapon.offset_top = cfg.get_value("EquipmentPanel", "offset_top")
 			weapon.offset_right = cfg.get_value("EquipmentPanel", "offset_right")
 			weapon.offset_bottom = cfg.get_value("EquipmentPanel", "offset_bottom")
-	# 加载自动锁定/攻击勾选状态（用独立文件避免 ConfigFile 类型推断 bug）
-	_load_auto_settings()
-
-## ====== 自动设置持久化（用文件读写绕过 ConfigFile 类型推断 bug） ======
-
-const AUTO_SETTINGS_PATH: String = "user://auto_settings.cfg"
-
-func _save_auto_settings() -> void:
-	var f = FileAccess.open(AUTO_SETTINGS_PATH, FileAccess.WRITE)
-	if f:
-		f.store_line("auto_lock=%d" % (1 if auto_lock_check and auto_lock_check.pressed else 0))
-		f.store_line("auto_attack=%d" % (1 if auto_attack_check and auto_attack_check.pressed else 0))
-
-func _load_auto_settings() -> void:
-	if not FileAccess.file_exists(AUTO_SETTINGS_PATH):
-		return
-	var f = FileAccess.open(AUTO_SETTINGS_PATH, FileAccess.READ)
-	if not f:
-		return
-	while not f.eof_reached():
-		var line = f.get_line().strip_edges()
-		if line.begins_with("auto_lock="):
-			_auto_lock_enabled = (line.trim_prefix("auto_lock=").to_int() == 1)
-			if auto_lock_check:
-				auto_lock_check.set_pressed_no_signal(_auto_lock_enabled)
-		elif line.begins_with("auto_attack="):
-			_auto_attack_enabled = (line.trim_prefix("auto_attack=").to_int() == 1)
-			if auto_attack_check:
-				auto_attack_check.set_pressed_no_signal(_auto_attack_enabled)
+	
+	# 加载自动锁定/攻击勾选状态
+	if cfg.has_section_key("AutoSettings", "auto_lock"):
+		var val = cfg.get_value("AutoSettings", "auto_lock", false)
+		_auto_lock_enabled = val
+		if auto_lock_check:
+			auto_lock_check.set_pressed_no_signal(val)
+	if cfg.has_section_key("AutoSettings", "auto_attack"):
+		var val = cfg.get_value("AutoSettings", "auto_attack", false)
+		_auto_attack_enabled = val
+		if auto_attack_check:
+			auto_attack_check.set_pressed_no_signal(val)
 
 ## ====== 消息与信息 ======
 
