@@ -27,9 +27,7 @@ class_name HUD
 @export var shield_text_label: Label
 @export var armor_text_label: Label
 @export var hull_text_label: Label
-@export var isk_label: Label
 @export var cargo_label: Label
-@export var location_label: Label
 @export var auto_lock_check: CheckBox
 @export var auto_attack_check: CheckBox
 @export var message_log: VBoxContainer
@@ -37,7 +35,6 @@ class_name HUD
 @export var spawn_button: Button
 @export var new_game_button: Button
 @export var restart_game_button: Button
-@export var cam_dist_label: Label
 @export var menu_panel: Panel
 @export var btn_lock: Button
 @export var btn_unlock: Button
@@ -63,8 +60,8 @@ var _auto_lock_timer: float = 0.0
 const AUTO_LOCK_INTERVAL: float = 1.0
 var _auto_attack_timer: float = 0.0
 const AUTO_ATTACK_INTERVAL: float = 1.0
-var _auto_lock_enabled: bool = false
-var _auto_attack_enabled: bool = false
+var _auto_lock_enabled: bool = true
+var _auto_attack_enabled: bool = true
 
 var player_ship: PlayerShip = null
 var global_ref: Node
@@ -107,7 +104,6 @@ func _ready() -> void:
 	btn_unlock = get_node_or_null("TargetPanel/BtnUnlock") as Button
 	locked_panel = get_node_or_null("LockedPanel") as Control
 	locked_list = get_node_or_null("LockedPanel/ScrollContainer/LockedList") as HBoxContainer
-	cam_dist_label = get_node_or_null("TopBar/CamDistLabel") as Label
 	# 手动查找装备面板
 	equipment_panel = get_node_or_null("EquipmentPanel") as Panel
 	equipment_list = get_node_or_null("EquipmentPanel/ScrollContainer/EquipmentList") as HBoxContainer
@@ -149,10 +145,10 @@ func _ready() -> void:
 	if not restart_game_button:
 		restart_game_button = get_node_or_null("MenuPanel/RestartGameButton") as Button
 	if not message_log:
-		message_log = get_node_or_null("MessageLog") as VBoxContainer
+		message_log = get_node_or_null("MessageLog/ScrollContainer/MessageList") as VBoxContainer
 	
 	# 连接 DraggablePanel 布局变更信号 → 保存面板位置
-	for panel_name in ["OverviewPanel", "TargetPanel", "ShipStatusPanel", "LockedPanel", "EquipmentPanel"]:
+	for panel_name in ["OverviewPanel", "TargetPanel", "ShipStatusPanel", "LockedPanel", "EquipmentPanel", "MessageLog"]:
 		var p = get_node_or_null(panel_name)
 		if p and p.has_signal("layout_changed"):
 			p.layout_changed.connect(_save_panel_layout)
@@ -187,14 +183,6 @@ func _ready() -> void:
 	
 	_find_player()
 	
-	if global_ref:
-		if global_ref.has_signal("isk_changed"):
-			global_ref.isk_changed.connect(_on_isk_changed)
-		if global_ref.has_signal("location_changed"):
-			global_ref.location_changed.connect(_on_location_changed)
-	
-	_update_isk_display()
-	_update_location_display()
 	_update_overview()
 	
 	# 连接右键菜单
@@ -269,7 +257,6 @@ func _process(delta: float) -> void:
 	if player_ship and is_inside_tree():
 		_update_speed()
 		_update_target_distance()
-		_update_cam_dist()
 	
 	# 定时更新总览
 	overview_update_timer += delta
@@ -309,7 +296,6 @@ func _update_all() -> void:
 	_update_speed()
 	if ship_name_label and global_ref:
 		ship_name_label.text = global_ref.player_ship_data.get("name", "秃鹫级")
-	_update_isk_display()
 
 func _update_shield(current: float, max_value: float) -> void:
 	if shield_bar:
@@ -1278,6 +1264,12 @@ func _save_panel_layout() -> void:
 		cfg.set_value("EquipmentPanel", "offset_top", weapon.offset_top)
 		cfg.set_value("EquipmentPanel", "offset_right", weapon.offset_right)
 		cfg.set_value("EquipmentPanel", "offset_bottom", weapon.offset_bottom)
+	var msg_log = get_node_or_null("MessageLog")
+	if msg_log:
+		cfg.set_value("MessageLog", "offset_left", msg_log.offset_left)
+		cfg.set_value("MessageLog", "offset_top", msg_log.offset_top)
+		cfg.set_value("MessageLog", "offset_right", msg_log.offset_right)
+		cfg.set_value("MessageLog", "offset_bottom", msg_log.offset_bottom)
 	# 保存自动锁定/攻击勾选状态
 	if auto_lock_check:
 		cfg.set_value("AutoSettings", "auto_lock", auto_lock_check.button_pressed)
@@ -1288,6 +1280,13 @@ func _save_panel_layout() -> void:
 func _load_panel_layout() -> void:
 	var cfg = ConfigFile.new()
 	if cfg.load(PANEL_SAVE_PATH) != OK:
+		# 没有存档：自动锁定/攻击默认开启
+		_auto_lock_enabled = true
+		_auto_attack_enabled = true
+		if auto_lock_check:
+			auto_lock_check.set_pressed_no_signal(true)
+		if auto_attack_check:
+			auto_attack_check.set_pressed_no_signal(true)
 		return
 	var overview = get_node_or_null("OverviewPanel")
 	var target = get_node_or_null("TargetPanel")
@@ -1324,6 +1323,13 @@ func _load_panel_layout() -> void:
 			weapon.offset_top = cfg.get_value("EquipmentPanel", "offset_top")
 			weapon.offset_right = cfg.get_value("EquipmentPanel", "offset_right")
 			weapon.offset_bottom = cfg.get_value("EquipmentPanel", "offset_bottom")
+	var msg_log = get_node_or_null("MessageLog")
+	if msg_log:
+		if cfg.has_section_key("MessageLog", "offset_left"):
+			msg_log.offset_left = cfg.get_value("MessageLog", "offset_left")
+			msg_log.offset_top = cfg.get_value("MessageLog", "offset_top")
+			msg_log.offset_right = cfg.get_value("MessageLog", "offset_right")
+			msg_log.offset_bottom = cfg.get_value("MessageLog", "offset_bottom")
 	
 	# 加载自动锁定/攻击勾选状态
 	if cfg.has_section_key("AutoSettings", "auto_lock"):
@@ -1338,13 +1344,6 @@ func _load_panel_layout() -> void:
 			auto_attack_check.set_pressed_no_signal(val)
 
 ## ====== 消息与信息 ======
-
-func _update_cam_dist() -> void:
-	if not cam_dist_label or not player_ship:
-		return
-	if player_ship.has_method("get_cam_distance"):
-		var dist = player_ship.get_cam_distance()
-		cam_dist_label.text = "镜头: " + _format_distance(dist)
 
 func add_message(text: String, color: Color = Color.WHITE) -> void:
 	if not message_log:
@@ -1368,27 +1367,3 @@ func add_message(text: String, color: Color = Color.WHITE) -> void:
 ## 接收战斗日志消息并显示到UI
 func _on_combat_log(message: String, color: Color) -> void:
 	add_message(message, color)
-
-func _on_isk_changed(_value: int) -> void:
-	_update_isk_display()
-
-func _on_location_changed(_location_name: String) -> void:
-	_update_location_display()
-
-func _update_isk_display() -> void:
-	if isk_label and global_ref:
-		isk_label.text = "ISK: %s" % _format_isk(global_ref.player_isk)
-
-func _update_location_display() -> void:
-	if location_label and global_ref:
-		location_label.text = global_ref.player_location
-
-static func _format_isk(amount: int) -> String:
-	if amount >= 1000000000:
-		return "%.2f B" % (amount / 1000000000.0)
-	elif amount >= 1000000:
-		return "%.2f M" % (amount / 1000000.0)
-	elif amount >= 1000:
-		return "%.2f K" % (amount / 1000.0)
-	else:
-		return str(amount)

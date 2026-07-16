@@ -159,7 +159,7 @@ func _show_laser_miss(target: Ship) -> void:
 	_render_laser_beam()
 	laser_beam.visible = true
 
-## 更新激光光束位置
+## 更新激光光束位置（每帧刷新起点 = 炮口实时位置）
 func _update_laser_beam_position() -> void:
 	if laser_track_target and laser_track_target.is_alive:
 		# 命中：持续追踪目标当前位置
@@ -170,7 +170,9 @@ func _update_laser_beam_position() -> void:
 		laser_beam.visible = false
 		laser_beam_timer = 0.0
 		laser_track_target = null
-	# 未命中：保持固定偏移位置不变
+	else:
+		# 未命中：起点随炮口实时刷新，终点保持固定偏移
+		_render_laser_beam()
 
 ## 渲染激光光束（从炮口到 end_pos）
 func _render_laser_beam() -> void:

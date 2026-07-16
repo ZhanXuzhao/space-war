@@ -25,9 +25,6 @@ bg_color = Color(1, 0.4, 0.1, 0.8)
 [sub_resource type="StyleBoxFlat" id="cap_fill"]
 bg_color = Color(0.1, 0.5, 0.9, 0.8)
 
-[sub_resource type="StyleBoxFlat" id="topbar_style"]
-bg_color = Color(1, 1, 1, 0.2)
-
 [sub_resource type="StyleBoxFlat" id="menubar_style"]
 bg_color = Color(1, 1, 1, 0.2)
 border_width_left = 1
@@ -186,10 +183,10 @@ text = "自动攻击"
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -297.0
-offset_top = 38.0
-offset_right = -9.0
-offset_bottom = 286.0
+offset_left = -293.0
+offset_top = 8.0
+offset_right = -5.0
+offset_bottom = 256.0
 grow_horizontal = 0
 theme_override_styles/panel = SubResource("overview_bg")
 script = ExtResource("2_draggable")
@@ -371,54 +368,13 @@ theme_override_colors/font_hover_color = Color(1, 0.7, 0.5, 1)
 theme_override_font_sizes/font_size = 11
 text = "🔓 解除锁定"
 
-[node name="TopBar" type="Panel" parent="." unique_id=1006633197]
-anchors_preset = 10
-anchor_right = 1.0
-offset_bottom = 30.0
-theme_override_styles/panel = SubResource("topbar_style")
-
-[node name="LocationLabel" type="Label" parent="TopBar" unique_id=1266747231]
-layout_mode = 0
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -150.0
-offset_top = 5.0
-offset_right = 150.0
-offset_bottom = 25.0
-theme_override_colors/font_color = Color(0.8, 0.8, 1, 1)
-text = "加达里星门"
-horizontal_alignment = 1
-
-[node name="ISKLabel" type="Label" parent="TopBar" unique_id=992268502]
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 10.0
-offset_top = 5.0
-offset_right = -10.0
-offset_bottom = 25.0
-grow_horizontal = 2
-theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
-text = "ISK: 50,000"
-horizontal_alignment = 2
-
-[node name="CamDistLabel" type="Label" parent="TopBar" unique_id=733508391]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 5.0
-offset_right = 180.0
-offset_bottom = 25.0
-theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 0.8)
-theme_override_font_sizes/font_size = 10
-text = "---"
-
 [node name="OverviewPanel" type="Panel" parent="." unique_id=1840853210]
 anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -229.0
-offset_top = 294.0
+offset_top = 271.0
 offset_right = -10.0
 offset_bottom = -10.0
 grow_horizontal = 0
@@ -533,8 +489,8 @@ size_flags_vertical = 3
 [node name="MenuPanel" type="Panel" parent="." unique_id=1968127148]
 anchors_preset = 9
 anchor_bottom = 1.0
-offset_top = 30.0
 offset_right = 80.0
+grow_vertical = 2
 theme_override_styles/panel = SubResource("menubar_style")
 
 [node name="SpawnButton" type="Button" parent="MenuPanel" unique_id=1968127149]
@@ -576,15 +532,79 @@ theme_override_font_sizes/font_size = 11
 text = "重开游戏"
 flat = true
 
-[node name="MessageLog" type="VBoxContainer" parent="." unique_id=2108244219]
+[node name="MessageLog" type="Panel" parent="." unique_id=2108244219]
 custom_minimum_size = Vector2(300, 300)
 offset_left = 90.0
 offset_top = 43.0
 offset_right = 303.0
 offset_bottom = 343.0
-size_flags_horizontal = 0
-size_flags_vertical = 0
-mouse_filter = 2
+theme_override_styles/panel = SubResource("overview_bg")
+script = ExtResource("2_draggable")
+min_width = 200.0
+min_height = 100.0
+metadata/_edit_group_ = true
+
+[node name="HandleLeft" type="Control" parent="MessageLog" unique_id=654870692]
+anchors_preset = 0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_right = 4.0
+mouse_default_cursor_shape = 10
+
+[node name="HandleRight" type="Control" parent="MessageLog" unique_id=1434806449]
+anchors_preset = 0
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_right = 4.0
+mouse_default_cursor_shape = 10
+
+[node name="HandleTop" type="Control" parent="MessageLog" unique_id=1548409439]
+anchors_preset = 0
+anchor_right = 1.0
+offset_top = -4.0
+offset_bottom = 4.0
+mouse_default_cursor_shape = 9
+
+[node name="HandleBottom" type="Control" parent="MessageLog" unique_id=1347900929]
+anchors_preset = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -4.0
+offset_bottom = 4.0
+mouse_default_cursor_shape = 9
+
+[node name="HeaderBg" type="Panel" parent="MessageLog" unique_id=997934455]
+layout_mode = 0
+anchor_right = 1.0
+offset_bottom = 28.0
+theme_override_styles/panel = SubResource("overview_header_bg")
+
+[node name="HeaderLabel" type="Label" parent="MessageLog/HeaderBg" unique_id=1213984152]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 5.0
+offset_top = 4.0
+offset_right = -5.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0, 0.8, 1, 1)
+text = "消 息 日 志"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MessageLog" unique_id=1119828724]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 5.0
+offset_top = 32.0
+offset_right = -5.0
+offset_bottom = -5.0
+
+[node name="MessageList" type="VBoxContainer" parent="MessageLog/ScrollContainer" unique_id=504407993]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 
 [node name="OverviewContextMenu" type="PopupMenu" parent="." unique_id=1187790722]
 oversampling_override = 1.0
@@ -595,10 +615,10 @@ custom_minimum_size = Vector2(1000, 200)
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -1338.0
-offset_top = 49.0
-offset_right = -338.0
-offset_bottom = 249.0
+offset_left = -1302.0
+offset_top = 9.0
+offset_right = -302.0
+offset_bottom = 209.0
 grow_horizontal = 0
 theme_override_styles/panel = SubResource("overview_bg")
 script = ExtResource("2_draggable")
