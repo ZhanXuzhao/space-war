@@ -38,6 +38,9 @@ var is_alive: bool = true
 var has_move_order: bool = false
 var move_target: Vector3 = Vector3.ZERO
 
+## 持续靠近目标（非空时每帧更新 move_target，实现追踪移动目标）
+var approach_target: Node3D = null
+
 ## 速度指令模式（用于环绕时径向/切向速度分配）
 var has_velocity_order: bool = false
 var velocity_setpoint: Vector3 = Vector3.ZERO
@@ -122,6 +125,7 @@ func _process(delta: float) -> void:
 		return
 	_recharge_capacitor(delta)
 	_update_velocity_arrow()
+	_update_approach(delta)
 
 ## 更新速度箭头：速度越快箭头越长
 func _update_velocity_arrow() -> void:
@@ -192,7 +196,8 @@ func _handle_movement(delta: float) -> void:
 		var speed_factor = 1.0
 		if distance < 200.0:
 			speed_factor = distance / 200.0
-		if distance < 50.0:
+		# 持续靠近模式下不自动停止
+		if distance < 50.0 and not approach_target:
 			has_move_order = false
 		
 		current_speed = move_toward(current_speed, max_speed * speed_factor, acceleration * delta)
@@ -281,8 +286,29 @@ func set_active_target(target: Ship) -> void:
 	if target in locked_targets:
 		active_target = target
 
+## 持续靠近目标（每帧更新 move_target = target.global_position，实现追击）
+func order_approach(target: Node3D) -> void:
+	if not target or not is_instance_valid(target):
+		return
+	approach_target = target
+	move_target = target.global_position
+	has_move_order = true
+	has_velocity_order = false
+
+## 取消持续靠近
+func cancel_approach() -> void:
+	approach_target = null
+
+## 每帧更新靠近目标位置
+func _update_approach(_delta: float) -> void:
+	if not approach_target or not is_instance_valid(approach_target):
+		approach_target = null
+		return
+	move_target = approach_target.global_position
+
 ## 移动到目标位置（基类实现，PlayerShip 可覆写）
 func order_move_to(position: Vector3) -> void:
+	approach_target = null
 	move_target = position
 	has_move_order = true
 	has_velocity_order = false

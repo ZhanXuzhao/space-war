@@ -79,8 +79,8 @@ func _process_normal_flight(delta: float) -> void:
 	# 环绕目标飞行
 	_update_orbit(delta)
 	
-	# 到达目标点后减速
-	if has_move_order:
+	# 到达目标点后减速（持续靠近模式下不取消，继续追踪）
+	if has_move_order and not approach_target:
 		var dist = global_position.distance_to(move_target)
 		if dist < 50.0:
 			has_move_order = false
@@ -124,9 +124,10 @@ func _handle_movement(delta: float) -> void:
 func order_move_to(position: Vector3) -> void:
 	if flight_mode != FlightMode.NORMAL:
 		return
-	# 手动移动时取消环绕
+	# 手动移动时取消环绕和持续靠近
 	if orbit_target:
 		cancel_orbit()
+	cancel_approach()
 	super.order_move_to(position)
 
 ## 环绕轨迹追踪
@@ -199,6 +200,9 @@ func _update_orbit(delta: float) -> void:
 func order_orbit(target: Node3D, range: float = 1200.0) -> void:
 	if not target or not is_instance_valid(target):
 		return
+	
+	# 环绕时取消持续靠近
+	cancel_approach()
 	
 	# 显示环绕轨迹
 	if target is Ship and target.is_alive:

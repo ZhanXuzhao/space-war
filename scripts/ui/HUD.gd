@@ -834,8 +834,8 @@ func _on_btn_approach() -> void:
 	if not player_ship or not _target_node or not is_instance_valid(_target_node):
 		return
 	if _target_node is Node3D:
-		player_ship.order_move_to(_target_node.global_position)
-		add_message("靠近: " + entry_name(_target_node), Color(0.3, 0.8, 1))
+		player_ship.order_approach(_target_node)
+		add_message("持续靠近: " + entry_name(_target_node), Color(0.3, 0.8, 1))
 
 func _on_btn_orbit() -> void:
 	if not player_ship or not _target_node or not is_instance_valid(_target_node):
