@@ -35,6 +35,15 @@ class_name HUD
 @export var spawn_button: Button
 @export var cam_dist_label: Label
 @export var menu_panel: Panel
+@export var btn_lock: Button
+@export var btn_unlock: Button
+@export var locked_panel: Control
+@export var locked_list: HBoxContainer
+
+## 锁定目标跟踪
+var watched_targets: Array[Ship] = []
+var _watched_target_data: Dictionary = {}  # Ship → {card: Control, shield_sig, armor_sig, hull_sig, destroy_sig}
+var _selected_locked_target: Ship = null
 
 var player_ship: PlayerShip = null
 var global_ref: Node
@@ -73,6 +82,10 @@ func _ready() -> void:
 	btn_orbit = get_node_or_null("TargetPanel/BtnOrbit") as Button
 	btn_warp = get_node_or_null("TargetPanel/BtnWarp") as Button
 	btn_cancel = get_node_or_null("TargetPanel/BtnCancel") as Button
+	btn_lock = get_node_or_null("TargetPanel/BtnLock") as Button
+	btn_unlock = get_node_or_null("TargetPanel/BtnUnlock") as Button
+	locked_panel = get_node_or_null("LockedPanel") as Control
+	locked_list = get_node_or_null("LockedPanel/ScrollContainer/LockedList") as HBoxContainer
 	cam_dist_label = get_node_or_null("TopBar/CamDistLabel") as Label
 	# 手动查找飞船状态条和文字标签（场景 NodePath 绑定不生效）
 	if not shield_bar:
@@ -101,7 +114,7 @@ func _ready() -> void:
 		message_log = get_node_or_null("MessageLog") as VBoxContainer
 	
 	# 连接 DraggablePanel 布局变更信号 → 保存面板位置
-	for panel_name in ["OverviewPanel", "TargetPanel", "ShipStatusPanel"]:
+	for panel_name in ["OverviewPanel", "TargetPanel", "ShipStatusPanel", "LockedPanel"]:
 		var p = get_node_or_null(panel_name)
 		if p and p.has_signal("layout_changed"):
 			p.layout_changed.connect(_save_panel_layout)
@@ -159,6 +172,12 @@ func _ready() -> void:
 		btn_warp.pressed.connect(_on_btn_warp)
 	if btn_cancel:
 		btn_cancel.pressed.connect(_on_btn_cancel)
+	
+	# 连接锁定/解除锁定按钮
+	if btn_lock:
+		btn_lock.pressed.connect(_on_btn_lock_pressed)
+	if btn_unlock:
+		btn_unlock.pressed.connect(_on_btn_unlock_pressed)
 	
 	# 连接战斗日志信号
 	var _global = get_node("/root/Global")
@@ -299,6 +318,7 @@ func _on_target_locked(target: Ship) -> void:
 	_update_target_shield(target.current_shield, target.max_shield)
 	_update_target_armor(target.current_armor, target.max_armor)
 	_update_target_hull(target.current_hull, target.max_hull)
+	_update_lock_button_visibility()
 
 func _update_target_distance() -> void:
 	if not target_dist_label or not _target_node or not is_instance_valid(_target_node):
@@ -312,10 +332,12 @@ func _on_target_lost(_target: Ship) -> void:
 	if target_info_panel:
 		target_info_panel.hide()
 	_target_node = null
+	_update_lock_button_visibility()
 
 func _on_target_destroyed() -> void:
 	if target_info_panel:
 		target_info_panel.hide()
+	_update_lock_button_visibility()
 	add_message("目标已被摧毁!", Color.RED)
 
 func _update_target_shield(current: float, max_value: float) -> void:
@@ -571,6 +593,12 @@ func _on_overview_label_input(event: InputEvent, entry: Dictionary) -> void:
 				player_ship.set_camera_focus(target_node)
 			else:
 				player_ship.clear_camera_focus()
+		# Ctrl+左键 → 锁定目标（仅飞船，已锁定的不再重复操作）
+		elif event.ctrl_pressed:
+			var target_node = entry.get("node")
+			if target_node is Ship and is_instance_valid(target_node) and target_node not in watched_targets:
+				_add_watched_target(target_node)
+				add_message("已锁定: " + entry_name(target_node), Color(0.3, 0.8, 1))
 		else:
 			_on_overview_left_click(entry)
 	
@@ -624,6 +652,8 @@ func _show_target_info(node: Node) -> void:
 	
 	if target_name_label:
 		target_name_label.text = name_str
+	
+	_update_lock_button_visibility()
 
 func _on_overview_right_click(entry: Dictionary, event: InputEventMouseButton) -> void:
 	var target_node = entry.get("node")
@@ -731,6 +761,159 @@ func _on_btn_cancel() -> void:
 	player_ship.has_move_order = false
 	player_ship.current_speed = 0.0
 
+## ====== 锁定目标面板 ======
+
+## 锁定按钮点击
+func _on_btn_lock_pressed() -> void:
+	if not _target_node or not is_instance_valid(_target_node):
+		return
+	if not (_target_node is Ship):
+		return
+	var target_ship = _target_node as Ship
+	if target_ship in watched_targets:
+		return
+	_add_watched_target(target_ship)
+	add_message("已锁定: " + entry_name(target_ship), Color(0.3, 0.8, 1))
+
+## 解除锁定按钮点击
+func _on_btn_unlock_pressed() -> void:
+	if not _target_node or not is_instance_valid(_target_node):
+		return
+	if not (_target_node is Ship):
+		return
+	var target_ship = _target_node as Ship
+	if target_ship not in watched_targets:
+		return
+	_remove_watched_target(target_ship)
+	add_message("取消锁定: " + entry_name(target_ship), Color(0.7, 0.7, 0.7))
+
+## 根据当前目标是否已锁定，切换锁定/解除锁定按钮显示
+func _update_lock_button_visibility() -> void:
+	if not btn_lock or not btn_unlock:
+		return
+	if not _target_node or not is_instance_valid(_target_node) or not (_target_node is Ship):
+		btn_lock.hide()
+		btn_unlock.hide()
+		return
+	
+	var is_watched = _target_node in watched_targets
+	btn_lock.visible = not is_watched
+	btn_unlock.visible = is_watched
+
+## 添加目标到锁定面板
+func _add_watched_target(target: Ship) -> void:
+	if target in watched_targets:
+		return
+	if not locked_panel or not locked_list:
+		return
+	
+	watched_targets.append(target)
+	
+	# 实例化卡片场景
+	var card = LOCKED_CARD_SCENE.instantiate() as LockedTargetCard
+	locked_list.add_child(card)
+	locked_list.move_child(card, 0)  # 新卡片插入最左侧，从右往左排列
+	card.setup(target)  # 在 _ready 之后调用，@onready 节点已就绪
+	
+	# 创建绑定的信号回调并存储以便断开
+	var health_cb = _update_watched_target_health.bind(target)
+	var destroy_cb = _on_watched_target_destroyed.bind(target)
+	
+	card.card_clicked.connect(_select_locked_target)
+	
+	_watched_target_data[target] = {
+		"card": card,
+		"health_sig": health_cb,
+		"destroy_sig": destroy_cb
+	}
+	
+	target.shield_changed.connect(health_cb)
+	target.hull_changed.connect(health_cb)
+	target.armor_changed.connect(health_cb)
+	target.capacitor_changed.connect(health_cb)
+	target.ship_destroyed.connect(destroy_cb, CONNECT_ONE_SHOT)
+	
+	locked_panel.show()
+	_update_lock_button_visibility()
+
+## 从锁定面板移除目标
+func _remove_watched_target(target: Ship) -> void:
+	watched_targets.erase(target)
+	
+	var data = _watched_target_data.get(target)
+	if data:
+		var card = data["card"] as Control
+		if card and is_instance_valid(card):
+			card.queue_free()
+		
+		# 使用存储的回调断开信号
+		if target.shield_changed.is_connected(data["health_sig"]):
+			target.shield_changed.disconnect(data["health_sig"])
+		if target.hull_changed.is_connected(data["health_sig"]):
+			target.hull_changed.disconnect(data["health_sig"])
+		if target.armor_changed.is_connected(data["health_sig"]):
+			target.armor_changed.disconnect(data["health_sig"])
+		if target.ship_destroyed.is_connected(data["destroy_sig"]):
+			target.ship_destroyed.disconnect(data["destroy_sig"])
+	
+	# 如果被移除的是当前选中目标，清除选中状态
+	if _selected_locked_target == target:
+		_selected_locked_target = null
+	
+	_watched_target_data.erase(target)
+	
+	# 如果锁定面板为空则隐藏
+	if locked_panel and watched_targets.size() == 0:
+		locked_panel.hide()
+		_selected_locked_target = null
+	
+	_update_lock_button_visibility()
+
+## 锁定目标被摧毁时自动移除
+func _on_watched_target_destroyed(target: Ship) -> void:
+	_remove_watched_target(target)
+	add_message("锁定目标已摧毁: " + entry_name(target), Color.RED)
+
+## 选中锁定面板中的目标（高亮卡片、更新目标面板）
+func _select_locked_target(target: Ship) -> void:
+	if not is_instance_valid(target):
+		return
+	# 取消旧选中
+	if _selected_locked_target and _selected_locked_target != target:
+		_update_card_selection_style(_selected_locked_target, false)
+	
+	_selected_locked_target = target
+	_update_card_selection_style(target, true)
+	
+	# 显示目标信息
+	_show_target_info(target)
+	
+	# 如果玩家飞船能锁定此目标，设为 active_target
+	if player_ship and target in player_ship.locked_targets:
+		player_ship.set_active_target(target)
+
+## 更新卡片的选中高亮样式
+func _update_card_selection_style(target: Ship, selected: bool) -> void:
+	var data = _watched_target_data.get(target)
+	if not data:
+		return
+	var card = data["card"] as LockedTargetCard
+	if not card or not is_instance_valid(card):
+		return
+	card.set_selected(selected)
+
+## 更新锁定面板中目标的四条状态条（护盾/装甲/结构/电容）
+func _update_watched_target_health(_current: float, _max_value: float, target: Ship) -> void:
+	var data = _watched_target_data.get(target)
+	if not data:
+		return
+	var card = data["card"] as LockedTargetCard
+	if not card or not is_instance_valid(card):
+		return
+	card.update_bars(target)
+
+const LOCKED_CARD_SCENE = preload("res://scenes/ui/LockedTargetCard.tscn")
+
 ## ====== 召唤敌舰按钮 ======
 
 func _on_spawn_button_pressed() -> void:
@@ -764,6 +947,7 @@ func _save_panel_layout() -> void:
 	var overview = get_node_or_null("OverviewPanel")
 	var target = get_node_or_null("TargetPanel")
 	var ship_status = get_node_or_null("ShipStatusPanel")
+	var locked = get_node_or_null("LockedPanel")
 	if overview:
 		cfg.set_value("OverviewPanel", "offset_left", overview.offset_left)
 		cfg.set_value("OverviewPanel", "offset_top", overview.offset_top)
@@ -779,6 +963,11 @@ func _save_panel_layout() -> void:
 		cfg.set_value("ShipStatusPanel", "offset_top", ship_status.offset_top)
 		cfg.set_value("ShipStatusPanel", "offset_right", ship_status.offset_right)
 		cfg.set_value("ShipStatusPanel", "offset_bottom", ship_status.offset_bottom)
+	if locked:
+		cfg.set_value("LockedPanel", "offset_left", locked.offset_left)
+		cfg.set_value("LockedPanel", "offset_top", locked.offset_top)
+		cfg.set_value("LockedPanel", "offset_right", locked.offset_right)
+		cfg.set_value("LockedPanel", "offset_bottom", locked.offset_bottom)
 	cfg.save(PANEL_SAVE_PATH)
 
 func _load_panel_layout() -> void:
@@ -788,6 +977,7 @@ func _load_panel_layout() -> void:
 	var overview = get_node_or_null("OverviewPanel")
 	var target = get_node_or_null("TargetPanel")
 	var ship_status = get_node_or_null("ShipStatusPanel")
+	var locked = get_node_or_null("LockedPanel")
 	if overview:
 		if cfg.has_section_key("OverviewPanel", "offset_left"):
 			overview.offset_left = cfg.get_value("OverviewPanel", "offset_left")
@@ -806,6 +996,12 @@ func _load_panel_layout() -> void:
 			ship_status.offset_top = cfg.get_value("ShipStatusPanel", "offset_top")
 			ship_status.offset_right = cfg.get_value("ShipStatusPanel", "offset_right")
 			ship_status.offset_bottom = cfg.get_value("ShipStatusPanel", "offset_bottom")
+	if locked:
+		if cfg.has_section_key("LockedPanel", "offset_left"):
+			locked.offset_left = cfg.get_value("LockedPanel", "offset_left")
+			locked.offset_top = cfg.get_value("LockedPanel", "offset_top")
+			locked.offset_right = cfg.get_value("LockedPanel", "offset_right")
+			locked.offset_bottom = cfg.get_value("LockedPanel", "offset_bottom")
 
 ## ====== 消息与信息 ======
 
