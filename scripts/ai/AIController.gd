@@ -37,7 +37,7 @@ func _ready() -> void:
 	_setup_auto_patrol()
 
 func _ensure_weapon() -> void:
-	# 如果 owner_ship 没有任何武器节点，创建2个激光武器
+	# 如果 owner_ship 没有任何武器节点，创建2个激光武器（与玩家飞船相同的设置）
 	if owner_ship.weapon_nodes.is_empty():
 		var ship = owner_ship
 		for i in range(2):
@@ -53,10 +53,13 @@ func _ensure_weapon() -> void:
 			wdata.capacitor_usage = 2.0
 			wdata.projectile_scene = null
 			weapon.weapon_data = wdata
-			# 左右两侧炮口位置
-			var offset = Vector3(-60 + i * 120, 0, -150)
+			# 贴于飞船左右表面(x=±75)，左右对称，与玩家一致
+			var side = 1 if i == 0 else -1  # 左=+1, 右=-1
+			var offset = Vector3(75 * side, 0, -75)  # 激光炮在船体前方左右对称
 			weapon.position = offset
 			weapon.name = "NPCLaser_%s" % ["Left" if i == 0 else "Right"]
+			# 同玩家飞船：左侧炮台安装平面法线朝左(+X)，右侧朝右(-X)
+			weapon.mount_local_normal = Vector3(side, 0, 0)
 			weapon.activate()
 			# 用 call_deferred 延迟添加武器节点
 			ship.call_deferred("add_child", weapon)
