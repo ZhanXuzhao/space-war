@@ -50,12 +50,12 @@ text = "秃鹫级"
 
 [node name="ShieldLabel" type="Label" parent="ShipStatusPanel" unique_id=2060220380]
 layout_mode = 0
-offset_left = 35.0
+offset_left = 5.0
 offset_top = 30.0
 offset_right = 240.0
 offset_bottom = 45.0
 theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
-text = "800 / 800"
+text = "护盾: 800 / 800"
 
 [node name="ShieldBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=241923400]
 layout_mode = 0
@@ -70,12 +70,12 @@ show_percentage = false
 
 [node name="ArmorLabel" type="Label" parent="ShipStatusPanel" unique_id=340187583]
 layout_mode = 0
-offset_left = 35.0
+offset_left = 5.0
 offset_top = 65.0
 offset_right = 240.0
 offset_bottom = 80.0
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
-text = "600 / 600"
+text = "装甲: 600 / 600"
 
 [node name="ArmorBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=1428167785]
 layout_mode = 0
@@ -90,12 +90,12 @@ show_percentage = false
 
 [node name="HullLabel" type="Label" parent="ShipStatusPanel" unique_id=407899098]
 layout_mode = 0
-offset_left = 35.0
+offset_left = 5.0
 offset_top = 100.0
 offset_right = 240.0
 offset_bottom = 115.0
 theme_override_colors/font_color = Color(1, 0.5, 0.2, 1)
-text = "800 / 800"
+text = "结构: 800 / 800"
 
 [node name="HullBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=1606116976]
 layout_mode = 0
@@ -110,12 +110,12 @@ show_percentage = false
 
 [node name="CapacitorLabel" type="Label" parent="ShipStatusPanel" unique_id=2121360874]
 layout_mode = 0
-offset_left = 35.0
+offset_left = 5.0
 offset_top = 135.0
 offset_right = 240.0
 offset_bottom = 150.0
 theme_override_colors/font_color = Color(0.2, 0.8, 1, 1)
-text = "400 / 400"
+text = "电容: 400 / 400"
 
 [node name="CapacitorBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=820649455]
 layout_mode = 0

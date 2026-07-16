@@ -37,25 +37,31 @@ func _ready() -> void:
 	_setup_auto_patrol()
 
 func _ensure_weapon() -> void:
-	# 如果 owner_ship 没有任何武器节点，创建一个基础武器
+	# 如果 owner_ship 没有任何武器节点，创建2个激光武器
 	if owner_ship.weapon_nodes.is_empty():
-		var weapon = Weapon.new()
-		# 使用默认资源
-		var wdata = WeaponData.new()
-		wdata.weapon_name = "NPC标准炮"
-		wdata.damage = 15.0
-		wdata.damage_type = "热能"
-		wdata.rate_of_fire = 1.5
-		wdata.optimal_range = 1500.0
-		wdata.falloff_range = 3000.0
-		wdata.tracking_speed = 0.08
-		wdata.capacitor_usage = 2.0
-		weapon.weapon_data = wdata
 		var ship = owner_ship
-		# 用 call_deferred 延迟添加武器节点（防止在敌舰 _ready 过程中直接 add_child 报错）
-		ship.call_deferred("add_child", weapon)
-		# 数组操作是安全的，立即添加
-		ship.weapon_nodes.append(weapon)
+		for i in range(2):
+			var weapon = Weapon.new()
+			var wdata = WeaponData.new()
+			wdata.weapon_name = "NPC激光炮"
+			wdata.damage = 15.0
+			wdata.damage_type = "热能"
+			wdata.rate_of_fire = 1.0 / 3.0
+			wdata.optimal_range = 1500.0
+			wdata.falloff_range = 3000.0
+			wdata.tracking_speed = 1.0
+			wdata.capacitor_usage = 2.0
+			wdata.projectile_scene = null
+			weapon.weapon_data = wdata
+			# 左右两侧炮口位置
+			var offset = Vector3(-60 + i * 120, 0, -150)
+			weapon.position = offset
+			weapon.name = "NPCLaser_%s" % ["Left" if i == 0 else "Right"]
+			weapon.activate()
+			# 用 call_deferred 延迟添加武器节点
+			ship.call_deferred("add_child", weapon)
+			# 数组操作是安全的，立即添加
+			ship.weapon_nodes.append(weapon)
 
 func _setup_auto_patrol() -> void:
 	if not owner_ship or patrol_points.size() > 0:

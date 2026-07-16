@@ -53,6 +53,8 @@ func _ready() -> void:
 	module_manager = get_node_or_null("../ModuleManager")
 	_camera = $Camera3D
 	_cam_distance = camera_default_distance
+	# 创建2个激光武器
+	_create_laser_weapons()
 
 func _process(delta: float) -> void:
 	super._process(delta)
@@ -280,6 +282,29 @@ func activate_module(slot_index: int, slot_type: String) -> void:
 	if not module_manager:
 		return
 	module_manager.call("activate_module", slot_index, slot_type)
+
+## 创建2个激光武器
+func _create_laser_weapons() -> void:
+	for i in range(2):
+		var weapon = Weapon.new()
+		var wdata = WeaponData.new()
+		wdata.weapon_name = "小型激光炮"
+		wdata.damage = 25.0
+		wdata.damage_type = "热能"
+		wdata.rate_of_fire = 1.0 / 3.0
+		wdata.optimal_range = 1500.0
+		wdata.falloff_range = 3000.0
+		wdata.tracking_speed = 1.0
+		wdata.capacitor_usage = 5.0
+		wdata.projectile_scene = null
+		weapon.weapon_data = wdata
+		# 左右两侧炮口位置（飞船尺寸 150x75x300，前端在 z=-150）
+		var offset = Vector3(-60 + i * 120, 0, -150)
+		weapon.position = offset
+		weapon.name = "LaserWeapon_%s" % ["Left" if i == 0 else "Right"]
+		add_child(weapon)
+		weapon_nodes.append(weapon)
+		weapon.activate()
 
 ## 射击所有已激活武器
 func fire_weapons(target: Ship, delta: float) -> void:

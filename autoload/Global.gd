@@ -5,6 +5,7 @@ extends Node
 
 signal isk_changed(value: int)
 signal location_changed(location_name: String)
+signal combat_log(message: String, color: Color)
 
 var player_isk: int = 50000:
 	set(value):

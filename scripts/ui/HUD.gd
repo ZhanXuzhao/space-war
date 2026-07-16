@@ -24,6 +24,9 @@ class_name HUD
 @export var btn_cancel: Button
 @export var overview_list: VBoxContainer
 @export var capacitor_text_label: Label
+@export var shield_text_label: Label
+@export var armor_text_label: Label
+@export var hull_text_label: Label
 @export var isk_label: Label
 @export var cargo_label: Label
 @export var location_label: Label
@@ -80,7 +83,24 @@ func _ready() -> void:
 	btn_warp = get_node_or_null("TargetPanel/BtnWarp") as Button
 	btn_cancel = get_node_or_null("TargetPanel/BtnCancel") as Button
 	cam_dist_label = get_node_or_null("TopBar/CamDistLabel") as Label
-	# 手动查找速度标签（场景 NodePath 绑定不生效）
+	# 手动查找飞船状态条和文字标签（场景 NodePath 绑定不生效）
+	if not shield_bar:
+		shield_bar = get_node_or_null("ShipStatusPanel/ShieldBar") as ProgressBar
+	if not armor_bar:
+		armor_bar = get_node_or_null("ShipStatusPanel/ArmorBar") as ProgressBar
+	if not hull_bar:
+		hull_bar = get_node_or_null("ShipStatusPanel/HullBar") as ProgressBar
+	if not capacitor_bar:
+		capacitor_bar = get_node_or_null("ShipStatusPanel/CapacitorBar") as ProgressBar
+	if not shield_text_label:
+		shield_text_label = get_node_or_null("ShipStatusPanel/ShieldLabel") as Label
+	if not armor_text_label:
+		armor_text_label = get_node_or_null("ShipStatusPanel/ArmorLabel") as Label
+	if not hull_text_label:
+		hull_text_label = get_node_or_null("ShipStatusPanel/HullLabel") as Label
+	if not capacitor_text_label:
+		capacitor_text_label = get_node_or_null("ShipStatusPanel/CapacitorLabel") as Label
+	# 手动查找速度标签
 	if not speed_label:
 		speed_label = get_node_or_null("ShipStatusPanel/SpeedLabel") as Label
 	# 手动查找召唤按钮和消息日志
@@ -161,6 +181,11 @@ func _ready() -> void:
 	if btn_cancel:
 		btn_cancel.pressed.connect(_on_btn_cancel)
 	
+	# 连接战斗日志信号
+	var _global = get_node("/root/Global")
+	if _global and _global.has_signal("combat_log"):
+		_global.combat_log.connect(_on_combat_log)
+	
 	# 连接召唤按钮
 	if spawn_button:
 		spawn_button.pressed.connect(_on_spawn_button_pressed)
@@ -225,23 +250,29 @@ func _update_shield(current: float, max_value: float) -> void:
 	if shield_bar:
 		var percent: float = (current / max_value) * 100.0 if max_value > 0 else 0.0
 		shield_bar.value = percent
+	if shield_text_label:
+		shield_text_label.text = "护盾: %.0f / %.0f" % [current, max_value]
 
 func _update_armor(current: float, max_value: float) -> void:
 	if armor_bar:
 		var percent: float = (current / max_value) * 100.0 if max_value > 0 else 0.0
 		armor_bar.value = percent
+	if armor_text_label:
+		armor_text_label.text = "装甲: %.0f / %.0f" % [current, max_value]
 
 func _update_hull(current: float, max_value: float) -> void:
 	if hull_bar:
 		var percent: float = (current / max_value) * 100.0 if max_value > 0 else 0.0
 		hull_bar.value = percent
+	if hull_text_label:
+		hull_text_label.text = "结构: %.0f / %.0f" % [current, max_value]
 
 func _update_capacitor(current: float, max_value: float) -> void:
 	if capacitor_bar:
 		var percent: float = (current / max_value) * 100.0 if max_value > 0 else 0.0
 		capacitor_bar.value = percent
 	if capacitor_text_label:
-		capacitor_text_label.text = "%.0f / %.0f" % [current, max_value]
+		capacitor_text_label.text = "电容: %.0f / %.0f" % [current, max_value]
 
 func _update_speed() -> void:
 	if speed_label and player_ship:
@@ -888,6 +919,10 @@ func add_message(text: String, color: Color = Color.WHITE) -> void:
 		if is_instance_valid(label):
 			label.queue_free()
 	, CONNECT_ONE_SHOT)
+
+## 接收战斗日志消息并显示到UI
+func _on_combat_log(message: String, color: Color) -> void:
+	add_message(message, color)
 
 func _on_isk_changed(_value: int) -> void:
 	_update_isk_display()
