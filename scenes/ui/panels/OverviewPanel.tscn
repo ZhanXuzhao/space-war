@@ -1,0 +1,127 @@
+[gd_scene format=3 uid="uid://overviewpanel"]
+
+[ext_resource type="Script" uid="uid://764p6ct4bpp3" path="res://scripts/ui/DraggablePanel.gd" id="1_draggable"]
+
+[sub_resource type="StyleBoxFlat" id="overview_bg"]
+bg_color = Color(1, 1, 1, 0.15)
+
+[sub_resource type="StyleBoxFlat" id="overview_header_bg"]
+bg_color = Color(1, 1, 1, 0.25)
+
+[node name="OverviewPanel" type="Panel"]
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -229.0
+offset_top = 271.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("overview_bg")
+script = ExtResource("1_draggable")
+min_width = 150.0
+min_height = 100.0
+metadata/_edit_group_ = true
+
+[node name="HandleLeft" type="Control" parent="."]
+anchors_preset = 0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_right = 4.0
+mouse_default_cursor_shape = 10
+
+[node name="HandleRight" type="Control" parent="."]
+anchors_preset = 0
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_right = 4.0
+mouse_default_cursor_shape = 10
+
+[node name="HandleTop" type="Control" parent="."]
+anchors_preset = 0
+anchor_right = 1.0
+offset_top = -4.0
+offset_bottom = 4.0
+mouse_default_cursor_shape = 9
+
+[node name="HandleBottom" type="Control" parent="."]
+anchors_preset = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -4.0
+offset_bottom = 4.0
+mouse_default_cursor_shape = 9
+
+[node name="HeaderBg" type="Panel" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+offset_bottom = 28.0
+theme_override_styles/panel = SubResource("overview_header_bg")
+
+[node name="HeaderLabel" type="Label" parent="HeaderBg"]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 5.0
+offset_top = 4.0
+offset_right = -5.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+text = "总  览"
+
+[node name="ColumnHeader" type="HBoxContainer" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 5.0
+offset_top = 32.0
+offset_right = -5.0
+offset_bottom = 52.0
+
+[node name="NameHeader" type="Label" parent="ColumnHeader"]
+custom_minimum_size = Vector2(60, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+text = "名称"
+
+[node name="DistHeader" type="Label" parent="ColumnHeader"]
+custom_minimum_size = Vector2(50, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+text = "距离"
+
+[node name="SpeedHeader" type="Label" parent="ColumnHeader"]
+custom_minimum_size = Vector2(50, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+text = "速度"
+
+[node name="TypeHeader" type="Label" parent="ColumnHeader"]
+custom_minimum_size = Vector2(50, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+text = "类型"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 55.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="OverviewList" type="VBoxContainer" parent="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3

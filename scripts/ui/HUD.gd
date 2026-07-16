@@ -21,7 +21,7 @@ class_name HUD
 @export var btn_approach: Button
 @export var btn_orbit: Button
 @export var btn_warp: Button
-@export var btn_cancel: Button
+@export var btn_attack: Button
 @export var overview_list: VBoxContainer
 @export var capacitor_text_label: Label
 @export var shield_text_label: Label
@@ -90,18 +90,18 @@ func _ready() -> void:
 	# 手动查找节点（场景 NodePath 绑定有时不生效）
 	overview_list = get_node_or_null("OverviewPanel/ScrollContainer/OverviewList") as VBoxContainer
 	target_info_panel = get_node_or_null("TargetPanel") as Control
-	target_name_label = get_node_or_null("TargetPanel/TargetName") as Label
-	target_type_label = get_node_or_null("TargetPanel/TargetType") as Label
-	target_dist_label = get_node_or_null("TargetPanel/TargetDistLabel") as Label
-	target_shield_bar = get_node_or_null("TargetPanel/TargetShieldBar") as ProgressBar
-	target_armor_bar = get_node_or_null("TargetPanel/TargetArmorBar") as ProgressBar
-	target_hull_bar = get_node_or_null("TargetPanel/TargetHullBar") as ProgressBar
-	btn_approach = get_node_or_null("TargetPanel/BtnApproach") as Button
-	btn_orbit = get_node_or_null("TargetPanel/BtnOrbit") as Button
-	btn_warp = get_node_or_null("TargetPanel/BtnWarp") as Button
-	btn_cancel = get_node_or_null("TargetPanel/BtnCancel") as Button
-	btn_lock = get_node_or_null("TargetPanel/BtnLock") as Button
-	btn_unlock = get_node_or_null("TargetPanel/BtnUnlock") as Button
+	target_name_label = get_node_or_null("TargetPanel/VBoxContainer/TargetName") as Label
+	target_type_label = get_node_or_null("TargetPanel/VBoxContainer/TargetType") as Label
+	target_dist_label = get_node_or_null("TargetPanel/VBoxContainer/TargetDistLabel") as Label
+	target_shield_bar = get_node_or_null("TargetPanel/VBoxContainer/TargetShieldBar") as ProgressBar
+	target_armor_bar = get_node_or_null("TargetPanel/VBoxContainer/TargetArmorBar") as ProgressBar
+	target_hull_bar = get_node_or_null("TargetPanel/VBoxContainer/TargetHullBar") as ProgressBar
+	btn_approach = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/BtnApproach") as Button
+	btn_orbit = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/BtnOrbit") as Button
+	btn_warp = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/BtnWarp") as Button
+	btn_attack = get_node_or_null("TargetPanel/VBoxContainer/BtnAttack") as Button
+	btn_lock = get_node_or_null("TargetPanel/VBoxContainer/LockBtnHBox/BtnLock") as Button
+	btn_unlock = get_node_or_null("TargetPanel/VBoxContainer/LockBtnHBox/BtnUnlock") as Button
 	locked_panel = get_node_or_null("LockedPanel") as Control
 	locked_list = get_node_or_null("LockedPanel/ScrollContainer/LockedList") as HBoxContainer
 	# 手动查找装备面板
@@ -196,8 +196,8 @@ func _ready() -> void:
 		btn_orbit.pressed.connect(_on_btn_orbit)
 	if btn_warp:
 		btn_warp.pressed.connect(_on_btn_warp)
-	if btn_cancel:
-		btn_cancel.pressed.connect(_on_btn_cancel)
+	if btn_attack:
+		btn_attack.pressed.connect(_on_btn_attack)
 	
 	# 连接锁定/解除锁定按钮
 	if btn_lock:
@@ -381,11 +381,13 @@ func _update_target_distance() -> void:
 	var dist = player_ship.global_position.distance_to(_target_node.global_position)
 	target_dist_label.text = "距离: " + _format_distance(dist)
 
-func _on_target_lost(_target: Ship) -> void:
+func _on_target_lost(target: Ship) -> void:
 	if target_info_panel:
 		target_info_panel.hide()
 	_target_node = null
 	_update_lock_button_visibility()
+	# 目标解除锁定 → 停止所有攻击该目标的武器
+	_clear_weapons_targeting(target)
 
 func _on_target_destroyed() -> void:
 	if target_info_panel:
@@ -803,16 +805,35 @@ func _on_btn_warp() -> void:
 		player_ship.warp_to(_target_node.global_position)
 		add_message("跃迁: " + entry_name(_target_node), Color(0.3, 0.8, 1))
 
-func _on_btn_cancel() -> void:
-	if not player_ship:
+func _on_btn_attack() -> void:
+	"""攻击按钮：若目标未锁定则先锁定，锁定后调用全部武器攻击"""
+	if not player_ship or not _target_node or not is_instance_valid(_target_node):
 		return
-	# 取消环绕
-	if player_ship.orbit_target:
-		player_ship.cancel_orbit()
-		add_message("已取消环绕", Color(1, 0.6, 0.3))
-	# 清除移动指令
-	player_ship.has_move_order = false
-	player_ship.current_speed = 0.0
+	if not (_target_node is Ship):
+		add_message("只能攻击飞船目标!", Color(1, 0.6, 0.3))
+		return
+	
+	var target_ship = _target_node as Ship
+	
+	# 如果目标未锁定，先锁定
+	if target_ship not in watched_targets:
+		player_ship.lock_target(target_ship)
+		_add_watched_target(target_ship)
+		add_message("已锁定: " + entry_name(target_ship), Color(0.3, 0.8, 1))
+		# 短暂等待一帧让锁定生效
+		await get_tree().process_frame
+	
+	# 设为当前活跃目标
+	player_ship.set_active_target(target_ship)
+	
+	# 调用全部武器攻击此目标
+	var weapon_count = 0
+	for w in player_ship.weapon_nodes:
+		if w is Weapon:
+			w.assign_target(target_ship)
+			weapon_count += 1
+	
+	add_message("全部武器攻击: " + entry_name(target_ship), Color(1, 0.3, 0.3))
 
 ## ====== 锁定目标面板 ======
 
@@ -914,6 +935,9 @@ func _remove_watched_target(target: Ship) -> void:
 		_selected_locked_target = null
 	
 	_watched_target_data.erase(target)
+	
+	# 目标解除锁定 → 停止所有攻击该目标的武器
+	_clear_weapons_targeting(target)
 	
 	# 如果锁定面板为空则隐藏
 	if locked_panel and watched_targets.size() == 0:
@@ -1153,16 +1177,23 @@ func _process_auto_attack() -> void:
 		if t and is_instance_valid(t) and t.is_alive and t.faction == Ship.Faction.NPC_HOSTILE:
 			hostile_targets.append(t)
 	
+	# 检查武器是否仍在攻击有效目标，若目标已解锁/摧毁则清除分配
+	for w in player_ship.weapon_nodes:
+		if w is Weapon and w.assigned_target:
+			if w.assigned_target not in hostile_targets:
+				w.clear_target()
+	
+	# 无有效锁定目标 → 所有武器停止攻击
 	if hostile_targets.is_empty():
 		return
 	
-	# 所有武器优先攻击第一个锁定目标
+	# 为没有分配目标（或目标已清除）的武器分配第一个锁定目标
 	var primary_target = hostile_targets[0]
 	if not primary_target or not primary_target.is_alive:
 		return
 	
 	for w in player_ship.weapon_nodes:
-		if w is Weapon and w.assigned_target != primary_target:
+		if w is Weapon and w.assigned_target == null:
 			w.assign_target(primary_target)
 
 ## 清除所有武器的目标分配
@@ -1171,6 +1202,14 @@ func _clear_all_weapon_assignments() -> void:
 		return
 	for w in player_ship.weapon_nodes:
 		if w is Weapon:
+			w.clear_target()
+
+## 清除攻击指定目标的武器分配
+func _clear_weapons_targeting(target: Ship) -> void:
+	if not player_ship or not is_instance_valid(player_ship):
+		return
+	for w in player_ship.weapon_nodes:
+		if w is Weapon and w.assigned_target == target:
 			w.clear_target()
 
 ## 递归查找敌对飞船

@@ -1,0 +1,169 @@
+[gd_scene format=3 uid="uid://shipstatuspanel"]
+
+[ext_resource type="Script" uid="uid://764p6ct4bpp3" path="res://scripts/ui/DraggablePanel.gd" id="1_draggable"]
+
+[sub_resource type="StyleBoxFlat" id="overview_bg"]
+bg_color = Color(1, 1, 1, 0.15)
+
+[sub_resource type="StyleBoxFlat" id="overview_header_bg"]
+bg_color = Color(1, 1, 1, 0.25)
+
+[sub_resource type="StyleBoxFlat" id="bg_style"]
+bg_color = Color(1, 1, 1, 0.15)
+
+[sub_resource type="StyleBoxFlat" id="shield_fill"]
+bg_color = Color(0.2, 0.4, 0.8, 0.8)
+
+[sub_resource type="StyleBoxFlat" id="armor_fill"]
+bg_color = Color(0.9, 0.7, 0.1, 0.8)
+
+[sub_resource type="StyleBoxFlat" id="hull_fill"]
+bg_color = Color(1, 0.4, 0.1, 0.8)
+
+[sub_resource type="StyleBoxFlat" id="cap_fill"]
+bg_color = Color(0.1, 0.5, 0.9, 0.8)
+
+[node name="ShipStatusPanel" type="Panel"]
+offset_left = 90.0
+offset_top = 1273.0
+offset_right = 330.0
+offset_bottom = 1588.0
+theme_override_styles/panel = SubResource("overview_bg")
+script = ExtResource("1_draggable")
+min_width = 150.0
+min_height = 100.0
+metadata/_edit_group_ = true
+
+[node name="HandleLeft" type="Control" parent="."]
+anchors_preset = 0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_right = 4.0
+mouse_default_cursor_shape = 10
+
+[node name="HandleRight" type="Control" parent="."]
+anchors_preset = 0
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_right = 4.0
+mouse_default_cursor_shape = 10
+
+[node name="HandleTop" type="Control" parent="."]
+anchors_preset = 0
+anchor_right = 1.0
+offset_top = -4.0
+offset_bottom = 4.0
+mouse_default_cursor_shape = 9
+
+[node name="HandleBottom" type="Control" parent="."]
+anchors_preset = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -4.0
+offset_bottom = 4.0
+mouse_default_cursor_shape = 9
+
+[node name="HeaderBg" type="Panel" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+offset_bottom = 28.0
+theme_override_styles/panel = SubResource("overview_header_bg")
+
+[node name="HeaderLabel" type="Label" parent="HeaderBg"]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 5.0
+offset_top = 4.0
+offset_right = -5.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0, 0.8, 1, 1)
+text = "飞 船 状 态"
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 5.0
+offset_top = 32.0
+offset_right = -5.0
+offset_bottom = -5.0
+
+[node name="ShipName" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0.8, 1, 1)
+text = "秃鹫级"
+
+[node name="ShieldLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+text = "护盾: 800 / 800"
+
+[node name="ShieldBar" type="ProgressBar" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/background = SubResource("bg_style")
+theme_override_styles/fill = SubResource("shield_fill")
+value = 100.0
+show_percentage = false
+
+[node name="ArmorLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+text = "装甲: 600 / 600"
+
+[node name="ArmorBar" type="ProgressBar" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/background = SubResource("bg_style")
+theme_override_styles/fill = SubResource("armor_fill")
+value = 100.0
+show_percentage = false
+
+[node name="HullLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.5, 0.2, 1)
+text = "结构: 800 / 800"
+
+[node name="HullBar" type="ProgressBar" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/background = SubResource("bg_style")
+theme_override_styles/fill = SubResource("hull_fill")
+value = 100.0
+show_percentage = false
+
+[node name="CapacitorLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.8, 1, 1)
+text = "电容: 400 / 400"
+
+[node name="CapacitorBar" type="ProgressBar" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/background = SubResource("bg_style")
+theme_override_styles/fill = SubResource("cap_fill")
+value = 100.0
+show_percentage = false
+
+[node name="SpeedLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 1, 0.5, 1)
+text = "速度: 0 m/s"
+
+[node name="AutoCheckHBox" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="AutoLockCheck" type="CheckBox" parent="VBoxContainer/AutoCheckHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "自动锁定"
+
+[node name="AutoAttackCheck" type="CheckBox" parent="VBoxContainer/AutoCheckHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 12
+text = "自动攻击"
