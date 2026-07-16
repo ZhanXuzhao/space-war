@@ -26,12 +26,9 @@ func _ready() -> void:
 		await get_tree().create_timer(0.5).timeout
 		_find_player()
 	
-	# 游戏开始时召唤3个敌人
+	# 游戏开始时不生成敌人（可通过按钮手动召唤）
 	if npc_scene:
 		print("EnemySpawner: 就绪，场景=", npc_scene.resource_path)
-		# 等待一帧确保玩家飞船完全就绪
-		await get_tree().process_frame
-		spawn_wave(3)
 
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")

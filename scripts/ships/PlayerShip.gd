@@ -275,7 +275,7 @@ func activate_module(slot_index: int, slot_type: String) -> void:
 		return
 	module_manager.call("activate_module", slot_index, slot_type)
 
-## 创建2个激光武器
+## 创建2个激光武器（贴于飞船左右表面，高度居中，Z轴均匀分布）
 func _create_laser_weapons() -> void:
 	for i in range(2):
 		var weapon = Weapon.new()
@@ -290,10 +290,14 @@ func _create_laser_weapons() -> void:
 		wdata.capacitor_usage = 5.0
 		wdata.projectile_scene = null
 		weapon.weapon_data = wdata
-		# 左右两侧炮口位置（飞船尺寸 150x75x300，前端在 z=-150）
-		var offset = Vector3(-60 + i * 120, 0, -150)
+		# 贴于飞船左右表面(x=±75)，高度居中(y=0)，Z轴均匀分布
+		var side = 1 if i == 0 else -1  # 左=+1, 右=-1
+		var z_pos = -75.0 if i == 0 else 75.0  # 前/后均匀分布
+		var offset = Vector3(75 * side, 0, z_pos)
 		weapon.position = offset
 		weapon.name = "LaserWeapon_%s" % ["Left" if i == 0 else "Right"]
+		# 左侧炮台安装平面法线朝左(+X)，右侧朝右(-X)
+		weapon.mount_local_normal = Vector3(side, 0, 0)
 		add_child(weapon)
 		weapon_nodes.append(weapon)
 		weapon.activate()
@@ -317,10 +321,14 @@ func _create_missile_weapons() -> void:
 		wdata.capacitor_usage = 15.0
 		wdata.projectile_scene = projectile_scene
 		weapon.weapon_data = wdata
-		# 左右两侧导弹挂架位置（比激光炮稍靠后、靠外）
-		var offset = Vector3(-90 + i * 180, -10, -100)
+		# 贴于飞船左右表面(x=±75)，高度居中(y=0)，Z轴与激光错开均匀分布
+		var side = 1 if i == 0 else -1  # 左=+1, 右=-1
+		var z_pos = 75.0 if i == 0 else -75.0  # 与激光错开：左前右后
+		var offset = Vector3(75 * side, 0, z_pos)
 		weapon.position = offset
 		weapon.name = "MissileLauncher_%s" % ["Left" if i == 0 else "Right"]
+		# 左侧挂架安装平面法线朝左(+X)，右侧朝右(-X)
+		weapon.mount_local_normal = Vector3(side, 0, 0)
 		add_child(weapon)
 		weapon_nodes.append(weapon)
 		weapon.activate()

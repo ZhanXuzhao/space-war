@@ -58,6 +58,9 @@ var weapon_nodes: Array[Node] = []
 ## 速度箭头
 var _velocity_arrow: MeshInstance3D
 
+## 船头标记圆球（在场景中定义，代码仅控制阵营颜色）
+var _nose_sphere: MeshInstance3D
+
 ## 阵营
 enum Faction { PLAYER, NPC_FRIENDLY, NPC_HOSTILE, NEUTRAL }
 @export var faction: Faction = Faction.NEUTRAL
@@ -65,6 +68,7 @@ enum Faction { PLAYER, NPC_FRIENDLY, NPC_HOSTILE, NEUTRAL }
 func _ready() -> void:
 	_init_stats()
 	_setup_velocity_arrow()
+	_setup_nose_color()
 
 ## 随机飞船名字池
 static var _ship_names: Array[String] = [
@@ -130,6 +134,33 @@ func _update_velocity_arrow() -> void:
 	_velocity_arrow.scale.x = 0.3 + speed_ratio * 0.7
 	_velocity_arrow.scale.y = 0.3 + speed_ratio * 0.7
 	_velocity_arrow.visible = speed_ratio > 0.01
+
+## 设置船头圆球颜色（按阵营，圆球本身在场景中定义）
+func _setup_nose_color() -> void:
+	_nose_sphere = get_node_or_null("NoseSphere") as MeshInstance3D
+	if not _nose_sphere:
+		return
+	
+	var mat = _nose_sphere.get_surface_override_material(0)
+	if not mat:
+		mat = StandardMaterial3D.new()
+		_nose_sphere.set_surface_override_material(0, mat)
+	
+	mat.emission_enabled = true
+	mat.emission_energy_multiplier = 1.5
+	match faction:
+		Faction.PLAYER:
+			mat.albedo_color = Color(0.2, 0.6, 1.0)
+			mat.emission = Color(0.2, 0.6, 1.0)
+		Faction.NPC_HOSTILE:
+			mat.albedo_color = Color(1.0, 0.2, 0.1)
+			mat.emission = Color(1.0, 0.2, 0.1)
+		Faction.NPC_FRIENDLY:
+			mat.albedo_color = Color(0.2, 1.0, 0.3)
+			mat.emission = Color(0.2, 1.0, 0.3)
+		_:  # NEUTRAL
+			mat.albedo_color = Color(0.8, 0.8, 0.8)
+			mat.emission = Color(0.8, 0.8, 0.8)
 
 func _physics_process(delta: float) -> void:
 	if not is_alive:

@@ -18,6 +18,10 @@ var owner_targeting_range: float = 0.0
 ## 独立目标分配 — 每个武器可攻击不同目标
 var assigned_target: Ship = null
 
+## 炮台安装平面的法线方向（飞船局部坐标系），默认朝前
+## 炮台默认朝向沿此方向向外，且与法线夹角 ≤ 90°
+@export var mount_local_normal: Vector3 = Vector3(0, 0, -1)
+
 # 武器发射台建模
 var weapon_mount: MeshInstance3D
 const MOUNT_LENGTH: float = 30.0
@@ -31,6 +35,20 @@ var laser_track_target: Ship = null  # 命中时追踪目标移动
 const LASER_DURATION: float = 1.0
 const LASER_THICKNESS: float = 1.5
 const MISS_OFFSET_RANGE: float = 120.0  # 未命中时激光偏移范围
+
+## 根据武器类型返回炮台颜色
+func _get_mount_color() -> Color:
+	match weapon_data.weapon_type:
+		WeaponData.WeaponType.LASER:
+			return Color(1.0, 0.2, 0.1)    # 红色 — 热能激光
+		WeaponData.WeaponType.MISSILE:
+			return Color(0.8, 0.6, 0.1)    # 金色 — 爆炸导弹
+		WeaponData.WeaponType.PROJECTILE:
+			return Color(0.3, 0.5, 0.9)    # 蓝色 — 动能弹
+		WeaponData.WeaponType.HYBRID:
+			return Color(0.6, 0.3, 0.9)    # 紫色 — 混合武器
+		_:
+			return Color(0.4, 0.4, 0.45)   # 默认灰色
 
 func _ready() -> void:
 	owner_ship = get_parent() as Ship
@@ -47,7 +65,7 @@ func _ready() -> void:
 	mount_mesh.bottom_radius = MOUNT_RADIUS
 	mount_mesh.height = MOUNT_LENGTH
 	var mount_mat = StandardMaterial3D.new()
-	mount_mat.albedo_color = Color(0.4, 0.4, 0.45)
+	mount_mat.albedo_color = _get_mount_color()
 	mount_mat.metallic = 0.7
 	mount_mat.roughness = 0.3
 	mount_mesh.material = mount_mat
@@ -125,7 +143,7 @@ func _clear_assigned_target() -> void:
 	assigned_target = null
 	target_changed.emit(self, null)
 
-## 武器发射台朝向目标旋转（平滑跟踪）
+## 武器发射台朝向目标旋转（平滑跟踪），带角度限制
 func _rotate_toward_target(delta: float) -> void:
 	var target: Ship = assigned_target if assigned_target and assigned_target.is_alive else null
 	
@@ -137,11 +155,31 @@ func _rotate_toward_target(delta: float) -> void:
 		var target_dir_global = (target.global_position - global_position).normalized()
 		var parent_basis = parent.global_basis
 		var local_dir = parent_basis.inverse() * target_dir_global
+		
+		# 限制旋转角度：与安装平面法线夹角 ≤ 90°
+		local_dir = _clamp_to_mount_cone(local_dir)
+		
 		var target_quat = Quaternion(Basis.looking_at(local_dir, Vector3.UP))
 		quaternion = quaternion.slerp(target_quat, 3.0 * delta)
 	else:
-		# 无目标时回到默认朝向（与飞船一致，局部旋转归零）
-		quaternion = quaternion.slerp(Quaternion.IDENTITY, 1.0 * delta)
+		# 无目标时回到安装平面法线方向（垂直平面向外）
+		var rest_quat = Quaternion(Basis.looking_at(mount_local_normal, Vector3.UP))
+		quaternion = quaternion.slerp(rest_quat, 1.0 * delta)
+
+## 限制炮台局部方向：与安装平面法线的夹角 ≤ 90°（不能转到平面反面）
+func _clamp_to_mount_cone(local_dir: Vector3) -> Vector3:
+	var normal := mount_local_normal.normalized()
+	var max_angle := deg_to_rad(90.0)
+	
+	var angle := normal.angle_to(local_dir)
+	if angle <= max_angle:
+		return local_dir  # 在半球范围内
+	
+	# 超出范围：将方向投影到圆锥表面
+	var axis := normal.cross(local_dir).normalized()
+	if axis.length_squared() < 0.001:
+		axis = Vector3.UP
+	return normal.rotated(axis, max_angle)
 
 ## 尝试射击当前目标
 func try_fire(target: Ship, _delta: float) -> bool:
@@ -157,6 +195,16 @@ func try_fire(target: Ship, _delta: float) -> bool:
 	if distance > owner_targeting_range:
 		return false
 	
+	# 检查目标是否在炮台转向范围内
+	var parent = get_parent()
+	if parent:
+		var target_dir_global = (target.global_position - global_position).normalized()
+		var parent_basis = parent.global_basis
+		var local_dir = parent_basis.inverse() * target_dir_global
+		var angle_deg = rad_to_deg(mount_local_normal.normalized().angle_to(local_dir))
+		if angle_deg > 90.0:
+			return false
+	
 	# 检查电容
 	if not owner_ship.use_capacitor(weapon_data.capacitor_usage):
 		return false
@@ -167,11 +215,13 @@ func try_fire(target: Ship, _delta: float) -> bool:
 	
 	if is_hit:
 		_fire_projectile(target)
-		# 命中：激光追踪目标
-		_show_laser_hit(target)
+		# 命中：激光追踪目标（仅对非导弹武器显示激光特效）
+		if weapon_data.weapon_type != WeaponData.WeaponType.MISSILE:
+			_show_laser_hit(target)
 	else:
-		# 未命中：激光打到目标身旁随机偏移位置
-		_show_laser_miss(target)
+		# 未命中（仅对非导弹武器显示激光特效）
+		if weapon_data.weapon_type != WeaponData.WeaponType.MISSILE:
+			_show_laser_miss(target)
 	
 	# 输出攻击日志
 	_log_attack(target, is_hit)
@@ -204,6 +254,17 @@ func _show_laser_miss(target: Ship) -> void:
 	_render_laser_beam()
 	laser_beam.visible = true
 
+## 获取炮台末端中点（发射点）的全局坐标
+func _get_muzzle_global_position() -> Vector3:
+	if muzzle_node_path:
+		var muzzle_node = get_node_or_null(muzzle_node_path)
+		if muzzle_node:
+			return muzzle_node.global_position
+	if weapon_mount:
+		# 炮台圆柱末端中点 = 炮台中心沿朝前方向偏移半个长度
+		return weapon_mount.global_position + (-weapon_mount.global_basis.z * MOUNT_LENGTH / 2.0)
+	return global_position
+
 ## 更新激光光束位置（每帧刷新起点 = 炮口实时位置）
 func _update_laser_beam_position() -> void:
 	if laser_track_target and laser_track_target.is_alive:
@@ -221,15 +282,7 @@ func _update_laser_beam_position() -> void:
 
 ## 渲染激光光束（从炮口到 end_pos）
 func _render_laser_beam() -> void:
-	var muzzle_pos: Vector3
-	if muzzle_node_path:
-		var muzzle_node = get_node_or_null(muzzle_node_path)
-		muzzle_pos = muzzle_node.global_position if muzzle_node else global_position
-	elif weapon_mount:
-		muzzle_pos = weapon_mount.global_position + (-weapon_mount.global_basis.z * MOUNT_LENGTH / 2.0)
-	else:
-		muzzle_pos = global_position
-	var start_pos = muzzle_pos
+	var start_pos = _get_muzzle_global_position()
 	var end_pos = laser_end_pos
 	var mid_point = (start_pos + end_pos) / 2.0
 	var distance = start_pos.distance_to(end_pos)
@@ -295,13 +348,8 @@ func _fire_projectile(target: Ship) -> void:
 		_direct_damage(target)
 		return
 	
-	# 从发射台前端发射（如果有 weapon_mount 则从尖端发出）
-	var muzzle_pos: Vector3
-	if weapon_mount:
-		# 发射台前端在局部坐标系中沿 -Z 方向偏移 MOUNT_LENGTH/2
-		muzzle_pos = weapon_mount.global_position + (-weapon_mount.global_basis.z * MOUNT_LENGTH / 2.0)
-	else:
-		muzzle_pos = global_position
+	# 从炮台末端中点发射
+	var muzzle_pos = _get_muzzle_global_position()
 	
 	var projectile = weapon_data.projectile_scene.instantiate() as Projectile
 	if projectile:

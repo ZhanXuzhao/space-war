@@ -15,6 +15,10 @@ size = Vector3(150, 75, 300)
 size = Vector3(150, 75, 300)
 material = SubResource("mat")
 
+[sub_resource type="SphereMesh" id="nose_mesh"]
+radius = 37.5
+height = 75.0
+
 [node name="NPCShip" type="CharacterBody3D"]
 collision_layer = 2
 collision_mask = 3
@@ -37,3 +41,7 @@ orbit_range = 1500.0
 flee_shield_percent = 25.0
 aggro_chance = 1.0
 light_energy = 1.0
+
+[node name="NoseSphere" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -150)
+mesh = SubResource("nose_mesh")
