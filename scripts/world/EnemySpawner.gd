@@ -77,8 +77,11 @@ func _try_spawn_enemy() -> void:
 	# 设置阵营（名字由 Ship.gd 自动生成）
 	enemy.faction = Ship.Faction.NPC_HOSTILE
 	
-	# 先添加到场景树，再设位置（反之会因不在场景树中无法计算全局变换）
+	# 先将敌人置于 spawn_pos 再添加到场景树
+	# 用 transform.origin 设置局部坐标绕过 global_position 的树依赖检查
+	enemy.transform.origin = spawn_pos
 	get_tree().current_scene.add_child(enemy)
+	# 再强制同步一次全局位置（确保 _ready 中使用 global_position 正确）
 	enemy.global_position = spawn_pos
 	
 	current_enemies.append(enemy)

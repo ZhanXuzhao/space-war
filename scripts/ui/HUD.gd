@@ -134,6 +134,11 @@ func _ready() -> void:
 		auto_lock_check = get_node_or_null("ShipStatusPanel/VBoxContainer/AutoCheckHBox/AutoLockCheck") as CheckBox
 	if not auto_attack_check:
 		auto_attack_check = get_node_or_null("ShipStatusPanel/VBoxContainer/AutoCheckHBox/AutoAttackCheck") as CheckBox
+	# 连接勾选框信号（必须在 _load_panel_layout 之前，确保加载时能触发回调）
+	if auto_lock_check:
+		auto_lock_check.toggled.connect(_on_auto_lock_toggled)
+	if auto_attack_check:
+		auto_attack_check.toggled.connect(_on_auto_attack_toggled)
 	# 手动查找召唤按钮和消息日志
 	if not spawn_button:
 		spawn_button = get_node_or_null("MenuPanel/SpawnButton") as Button
@@ -210,12 +215,6 @@ func _ready() -> void:
 	var _global = get_node("/root/Global")
 	if _global and _global.has_signal("combat_log"):
 		_global.combat_log.connect(_on_combat_log)
-	
-	# 连接自动锁定/攻击勾选框
-	if auto_lock_check:
-		auto_lock_check.toggled.connect(_on_auto_lock_toggled)
-	if auto_attack_check:
-		auto_attack_check.toggled.connect(_on_auto_attack_toggled)
 	
 	# 连接召唤按钮
 	if spawn_button:
@@ -1098,6 +1097,7 @@ func _on_auto_lock_toggled(button_pressed: bool) -> void:
 		add_message("自动锁定: 开启", Color(0.3, 0.8, 1))
 	else:
 		add_message("自动锁定: 关闭", Color(0.7, 0.7, 0.7))
+	_save_panel_layout()
 
 func _on_auto_attack_toggled(button_pressed: bool) -> void:
 	_auto_attack_enabled = button_pressed
@@ -1107,6 +1107,7 @@ func _on_auto_attack_toggled(button_pressed: bool) -> void:
 		# 关闭时清除所有武器的目标分配
 		_clear_all_weapon_assignments()
 		add_message("自动攻击: 关闭", Color(0.7, 0.7, 0.7))
+	_save_panel_layout()
 
 ## 自动锁定：扫描附近敌对飞船并锁定
 func _process_auto_lock() -> void:
@@ -1155,20 +1156,14 @@ func _process_auto_attack() -> void:
 	if hostile_targets.is_empty():
 		return
 	
-	# 收集所有空闲武器（未分配目标的）
-	var idle_weapons: Array[Weapon] = []
-	for w in player_ship.weapon_nodes:
-		if w is Weapon and not w.assigned_target:
-			idle_weapons.append(w)
-	
-	if idle_weapons.is_empty():
+	# 所有武器优先攻击第一个锁定目标
+	var primary_target = hostile_targets[0]
+	if not primary_target or not primary_target.is_alive:
 		return
 	
-	# 为每个空闲武器分配一个目标（轮流分配）
-	for i in range(idle_weapons.size()):
-		var target = hostile_targets[i % hostile_targets.size()]
-		if target and target.is_alive:
-			idle_weapons[i].assign_target(target)
+	for w in player_ship.weapon_nodes:
+		if w is Weapon and w.assigned_target != primary_target:
+			w.assign_target(primary_target)
 
 ## 清除所有武器的目标分配
 func _clear_all_weapon_assignments() -> void:
@@ -1247,10 +1242,9 @@ func _save_panel_layout() -> void:
 		cfg.set_value("EquipmentPanel", "offset_top", weapon.offset_top)
 		cfg.set_value("EquipmentPanel", "offset_right", weapon.offset_right)
 		cfg.set_value("EquipmentPanel", "offset_bottom", weapon.offset_bottom)
-	# 保存自动锁定/攻击勾选状态
-	cfg.set_value("AutoSettings", "auto_lock", auto_lock_check.pressed if auto_lock_check else false)
-	cfg.set_value("AutoSettings", "auto_attack", auto_attack_check.pressed if auto_attack_check else false)
 	cfg.save(PANEL_SAVE_PATH)
+	# 保存自动锁定/攻击勾选状态（用独立文件避免 ConfigFile.get_value 类型推断 bug）
+	_save_auto_settings()
 
 func _load_panel_layout() -> void:
 	var cfg = ConfigFile.new()
@@ -1291,14 +1285,35 @@ func _load_panel_layout() -> void:
 			weapon.offset_top = cfg.get_value("EquipmentPanel", "offset_top")
 			weapon.offset_right = cfg.get_value("EquipmentPanel", "offset_right")
 			weapon.offset_bottom = cfg.get_value("EquipmentPanel", "offset_bottom")
-	# 加载自动锁定/攻击勾选状态
-	if cfg.has_section("AutoSettings"):
-		if auto_lock_check and cfg.has_section_key("AutoSettings", "auto_lock"):
-			auto_lock_check.button_pressed = cfg.get_value("AutoSettings", "auto_lock")
-			_on_auto_lock_toggled(auto_lock_check.button_pressed)
-		if auto_attack_check and cfg.has_section_key("AutoSettings", "auto_attack"):
-			auto_attack_check.button_pressed = cfg.get_value("AutoSettings", "auto_attack")
-			_on_auto_attack_toggled(auto_attack_check.button_pressed)
+	# 加载自动锁定/攻击勾选状态（用独立文件避免 ConfigFile 类型推断 bug）
+	_load_auto_settings()
+
+## ====== 自动设置持久化（用文件读写绕过 ConfigFile 类型推断 bug） ======
+
+const AUTO_SETTINGS_PATH: String = "user://auto_settings.cfg"
+
+func _save_auto_settings() -> void:
+	var f = FileAccess.open(AUTO_SETTINGS_PATH, FileAccess.WRITE)
+	if f:
+		f.store_line("auto_lock=%d" % (1 if auto_lock_check and auto_lock_check.pressed else 0))
+		f.store_line("auto_attack=%d" % (1 if auto_attack_check and auto_attack_check.pressed else 0))
+
+func _load_auto_settings() -> void:
+	if not FileAccess.file_exists(AUTO_SETTINGS_PATH):
+		return
+	var f = FileAccess.open(AUTO_SETTINGS_PATH, FileAccess.READ)
+	if not f:
+		return
+	while not f.eof_reached():
+		var line = f.get_line().strip_edges()
+		if line.begins_with("auto_lock="):
+			_auto_lock_enabled = (line.trim_prefix("auto_lock=").to_int() == 1)
+			if auto_lock_check:
+				auto_lock_check.set_pressed_no_signal(_auto_lock_enabled)
+		elif line.begins_with("auto_attack="):
+			_auto_attack_enabled = (line.trim_prefix("auto_attack=").to_int() == 1)
+			if auto_attack_check:
+				auto_attack_check.set_pressed_no_signal(_auto_attack_enabled)
 
 ## ====== 消息与信息 ======
 
