@@ -447,6 +447,7 @@ func get_cam_distance() -> float:
 	return _cam_distance
 
 ## 设置相机锁定到目标（Alt+左键点击目标）
+## 锁定后摄像机围绕目标轨道运动（可右键旋转），不跟随目标自身旋转
 func set_camera_focus(target: Node3D) -> void:
 	# 记录当前相机观察位置作为过渡起点
 	_camera_look_at_pos = _get_camera_look_at_pos()
@@ -466,7 +467,8 @@ func _get_camera_look_at_pos() -> Vector3:
 func clear_camera_focus() -> void:
 	set_camera_focus(null)
 
-## 更新相机位置（球面坐标环绕），支持2s平滑过渡
+## 更新相机位置（球面坐标环绕），支持平滑过渡
+## 锁定目标时：相机平滑跟随目标位置，可右键调整视角，不跟随目标自身旋转
 func _update_camera() -> void:
 	if not _camera:
 		return
@@ -486,12 +488,13 @@ func _update_camera() -> void:
 		camera_focus_target = null
 		desired_pos = global_position
 	
-	# 平滑插值到目标位置（指数衰减，约2秒完成86%过渡）
-	var weight = 1.0 - exp(-get_process_delta_time())
+	# 平滑插值到目标位置（指数衰减，约1秒完成~95%过渡）
+	var weight = 1.0 - exp(-3.0 * get_process_delta_time())
 	_camera_look_at_pos = _camera_look_at_pos.lerp(desired_pos, weight)
 	
 	_camera.global_position = _camera_look_at_pos + offset
-	_camera.look_at(_camera_look_at_pos, Vector3.UP)
+	# 始终注视实际目标位置（确保目标居中，而非注视插值中间点）
+	_camera.look_at(desired_pos, Vector3.UP)
 
 ## 键盘快捷键
 func _input(event: InputEvent) -> void:
