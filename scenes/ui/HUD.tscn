@@ -27,42 +27,65 @@ bg_color = Color(0, 0, 0, 0.5)
 [sub_resource type="StyleBoxFlat" id="overview_header_bg"]
 bg_color = Color(0.15, 0.15, 0.2, 0.8)
 
+[sub_resource type="StyleBoxFlat" id="menubar_style"]
+bg_color = Color(0, 0, 0, 0.6)
+border_color = Color(0.2, 0.4, 0.6, 0.8)
+border_width_left = 1
+border_width_right = 1
+
+[sub_resource type="StyleBoxFlat" id="menu_btn_style"]
+bg_color = Color(0.1, 0.15, 0.25, 0.8)
+
 [node name="HUD" type="CanvasLayer" unique_id=1924590340]
 script = ExtResource("1")
 
 [node name="ShipStatusPanel" type="Panel" parent="." unique_id=724607298]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
+anchors_preset = 0
 offset_left = 10.0
-offset_top = -250.0
+offset_top = 400.0
 offset_right = 250.0
-offset_bottom = -10.0
+offset_bottom = 670.0
+
+[node name="HeaderBg" type="Panel" parent="ShipStatusPanel" unique_id=724607299]
+layout_mode = 0
+anchor_right = 1.0
+offset_bottom = 28.0
+theme_override_styles/panel = SubResource("overview_header_bg")
+
+[node name="HeaderLabel" type="Label" parent="ShipStatusPanel/HeaderBg" unique_id=724607300]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 5.0
+offset_top = 4.0
+offset_right = -5.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0, 0.8, 1, 1)
+text = "飞 船 状 态"
 
 [node name="ShipName" type="Label" parent="ShipStatusPanel" unique_id=2012399882]
 layout_mode = 0
 offset_left = 5.0
-offset_top = 5.0
+offset_top = 33.0
 offset_right = 240.0
-offset_bottom = 25.0
+offset_bottom = 53.0
 theme_override_colors/font_color = Color(0, 0.8, 1, 1)
 text = "秃鹫级"
 
 [node name="ShieldLabel" type="Label" parent="ShipStatusPanel" unique_id=2060220380]
 layout_mode = 0
 offset_left = 5.0
-offset_top = 30.0
+offset_top = 58.0
 offset_right = 240.0
-offset_bottom = 45.0
+offset_bottom = 73.0
 theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
 text = "护盾: 800 / 800"
 
 [node name="ShieldBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=241923400]
 layout_mode = 0
 offset_left = 5.0
-offset_top = 45.0
+offset_top = 73.0
 offset_right = 240.0
-offset_bottom = 60.0
+offset_bottom = 88.0
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("shield_fill")
 value = 100.0
@@ -71,18 +94,18 @@ show_percentage = false
 [node name="ArmorLabel" type="Label" parent="ShipStatusPanel" unique_id=340187583]
 layout_mode = 0
 offset_left = 5.0
-offset_top = 65.0
+offset_top = 93.0
 offset_right = 240.0
-offset_bottom = 80.0
+offset_bottom = 108.0
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 text = "装甲: 600 / 600"
 
 [node name="ArmorBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=1428167785]
 layout_mode = 0
 offset_left = 5.0
-offset_top = 80.0
+offset_top = 108.0
 offset_right = 240.0
-offset_bottom = 95.0
+offset_bottom = 123.0
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("armor_fill")
 value = 100.0
@@ -91,18 +114,18 @@ show_percentage = false
 [node name="HullLabel" type="Label" parent="ShipStatusPanel" unique_id=407899098]
 layout_mode = 0
 offset_left = 5.0
-offset_top = 100.0
+offset_top = 128.0
 offset_right = 240.0
-offset_bottom = 115.0
+offset_bottom = 143.0
 theme_override_colors/font_color = Color(1, 0.5, 0.2, 1)
 text = "结构: 800 / 800"
 
 [node name="HullBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=1606116976]
 layout_mode = 0
 offset_left = 5.0
-offset_top = 115.0
+offset_top = 143.0
 offset_right = 240.0
-offset_bottom = 130.0
+offset_bottom = 158.0
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("hull_fill")
 value = 100.0
@@ -111,18 +134,18 @@ show_percentage = false
 [node name="CapacitorLabel" type="Label" parent="ShipStatusPanel" unique_id=2121360874]
 layout_mode = 0
 offset_left = 5.0
-offset_top = 135.0
+offset_top = 163.0
 offset_right = 240.0
-offset_bottom = 150.0
+offset_bottom = 178.0
 theme_override_colors/font_color = Color(0.2, 0.8, 1, 1)
 text = "电容: 400 / 400"
 
 [node name="CapacitorBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=820649455]
 layout_mode = 0
 offset_left = 5.0
-offset_top = 150.0
+offset_top = 178.0
 offset_right = 240.0
-offset_bottom = 165.0
+offset_bottom = 193.0
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("cap_fill")
 value = 100.0
@@ -131,9 +154,9 @@ show_percentage = false
 [node name="SpeedLabel" type="Label" parent="ShipStatusPanel" unique_id=994489443]
 layout_mode = 0
 offset_left = 5.0
-offset_top = 175.0
+offset_top = 203.0
 offset_right = 240.0
-offset_bottom = 195.0
+offset_bottom = 223.0
 theme_override_colors/font_color = Color(0, 1, 0.5, 1)
 text = "速度: 0 m/s"
 
@@ -436,24 +459,29 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="SpawnButton" type="Button" parent="." unique_id=1968127148]
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
+[node name="MenuPanel" type="Panel" parent="." unique_id=1968127148]
+anchors_preset = 0
 anchor_bottom = 1.0
-offset_left = -100.0
-offset_top = -110.0
-offset_right = 100.0
-offset_bottom = -80.0
+offset_top = 30.0
+offset_right = 80.0
+theme_override_styles/panel = SubResource("menubar_style")
+
+[node name="SpawnButton" type="Button" parent="MenuPanel" unique_id=1968127149]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 5.0
+offset_right = 75.0
+offset_bottom = 50.0
 theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 0.3, 0.3, 1)
 theme_override_colors/font_hover_color = Color(0.5, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 11
 text = "召唤敌舰"
+flat = true
 
 [node name="MessageLog" type="VBoxContainer" parent="." unique_id=2108244219]
 custom_minimum_size = Vector2(300, 300)
-offset_left = 3.0
+offset_left = 90.0
 offset_top = 43.0
 offset_right = 303.0
 offset_bottom = 343.0

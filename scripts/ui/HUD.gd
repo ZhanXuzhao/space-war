@@ -34,6 +34,7 @@ class_name HUD
 @export var context_menu: OverviewContextMenu
 @export var spawn_button: Button
 @export var cam_dist_label: Label
+@export var menu_panel: Panel
 
 var player_ship: PlayerShip = null
 var global_ref: Node
@@ -105,7 +106,7 @@ func _ready() -> void:
 		speed_label = get_node_or_null("ShipStatusPanel/SpeedLabel") as Label
 	# 手动查找召唤按钮和消息日志
 	if not spawn_button:
-		spawn_button = get_node_or_null("SpawnButton") as Button
+		spawn_button = get_node_or_null("MenuPanel/SpawnButton") as Button
 	if not message_log:
 		message_log = get_node_or_null("MessageLog") as VBoxContainer
 	
@@ -126,6 +127,12 @@ func _ready() -> void:
 	if header:
 		header.mouse_filter = Control.MOUSE_FILTER_STOP
 		header.gui_input.connect(_on_header_drag_input)
+	
+	# 飞船状态面板标题栏拖拽移动
+	var ship_header = get_node_or_null("ShipStatusPanel/HeaderBg")
+	if ship_header:
+		ship_header.mouse_filter = Control.MOUSE_FILTER_STOP
+		ship_header.gui_input.connect(_on_ship_status_drag_input)
 	
 	# 总览空白区域点击 → 清除相机锁定
 	if overview_list:
@@ -535,6 +542,32 @@ func _on_header_drag_input(event: InputEvent) -> void:
 		panel.offset_right = panel.offset_left + panel_width
 		panel.offset_top = _drag_start_panel_offset.y + delta.y
 
+## ====== 飞船状态面板拖拽移动 ======
+
+func _on_ship_status_drag_input(event: InputEvent) -> void:
+	var panel = get_node_or_null("ShipStatusPanel")
+	if not panel:
+		return
+	
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_is_dragging_panel = true
+			_drag_start_mouse = get_viewport().get_mouse_position()
+			_drag_start_panel_offset = Vector2(panel.offset_left, panel.offset_top)
+		else:
+			_is_dragging_panel = false
+			_save_panel_layout()
+	
+	if event is InputEventMouseMotion and _is_dragging_panel:
+		var mouse_pos = get_viewport().get_mouse_position()
+		var delta = mouse_pos - _drag_start_mouse
+		var panel_width = panel.offset_right - panel.offset_left
+		var panel_height = panel.offset_bottom - panel.offset_top
+		panel.offset_left = _drag_start_panel_offset.x + delta.x
+		panel.offset_right = panel.offset_left + panel_width
+		panel.offset_top = _drag_start_panel_offset.y + delta.y
+		panel.offset_bottom = panel.offset_top + panel_height
+
 ## ====== 总览面板四边拖拽缩放 ======
 
 func _on_resize_handle_input(event: InputEvent, panel_name: String, edge: String) -> void:
@@ -861,6 +894,7 @@ func _save_panel_layout() -> void:
 	var cfg = ConfigFile.new()
 	var overview = get_node_or_null("OverviewPanel")
 	var target = get_node_or_null("TargetPanel")
+	var ship_status = get_node_or_null("ShipStatusPanel")
 	if overview:
 		cfg.set_value("OverviewPanel", "offset_left", overview.offset_left)
 		cfg.set_value("OverviewPanel", "offset_top", overview.offset_top)
@@ -871,6 +905,11 @@ func _save_panel_layout() -> void:
 		cfg.set_value("TargetPanel", "offset_top", target.offset_top)
 		cfg.set_value("TargetPanel", "offset_right", target.offset_right)
 		cfg.set_value("TargetPanel", "offset_bottom", target.offset_bottom)
+	if ship_status:
+		cfg.set_value("ShipStatusPanel", "offset_left", ship_status.offset_left)
+		cfg.set_value("ShipStatusPanel", "offset_top", ship_status.offset_top)
+		cfg.set_value("ShipStatusPanel", "offset_right", ship_status.offset_right)
+		cfg.set_value("ShipStatusPanel", "offset_bottom", ship_status.offset_bottom)
 	cfg.save(PANEL_SAVE_PATH)
 
 func _load_panel_layout() -> void:
@@ -879,6 +918,7 @@ func _load_panel_layout() -> void:
 		return
 	var overview = get_node_or_null("OverviewPanel")
 	var target = get_node_or_null("TargetPanel")
+	var ship_status = get_node_or_null("ShipStatusPanel")
 	if overview:
 		if cfg.has_section_key("OverviewPanel", "offset_left"):
 			overview.offset_left = cfg.get_value("OverviewPanel", "offset_left")
@@ -891,6 +931,12 @@ func _load_panel_layout() -> void:
 			target.offset_top = cfg.get_value("TargetPanel", "offset_top")
 			target.offset_right = cfg.get_value("TargetPanel", "offset_right")
 			target.offset_bottom = cfg.get_value("TargetPanel", "offset_bottom")
+	if ship_status:
+		if cfg.has_section_key("ShipStatusPanel", "offset_left"):
+			ship_status.offset_left = cfg.get_value("ShipStatusPanel", "offset_left")
+			ship_status.offset_top = cfg.get_value("ShipStatusPanel", "offset_top")
+			ship_status.offset_right = cfg.get_value("ShipStatusPanel", "offset_right")
+			ship_status.offset_bottom = cfg.get_value("ShipStatusPanel", "offset_bottom")
 
 ## ====== 消息与信息 ======
 
