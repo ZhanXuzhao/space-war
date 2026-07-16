@@ -929,6 +929,10 @@ func _add_watched_target(target: Ship) -> void:
 	
 	watched_targets.append(target)
 	
+	# 同步注册到飞船的锁定列表，确保自动攻击等机制能识别该目标
+	if player_ship and is_instance_valid(player_ship):
+		player_ship.lock_target(target)
+	
 	# 实例化卡片场景
 	var card = LOCKED_CARD_SCENE.instantiate() as LockedTargetCard
 	locked_list.add_child(card)
@@ -993,7 +997,9 @@ func _remove_watched_target(target: Ship) -> void:
 	
 	_watched_target_data.erase(target)
 	
-	# 目标解除锁定 → 停止所有攻击该目标的武器
+	# 目标解除锁定 → 从飞船锁定列表移除并停止所有攻击该目标的武器
+	if player_ship and is_instance_valid(player_ship):
+		player_ship.unlock_target(target)
 	_clear_weapons_targeting(target)
 	
 	# 如果锁定面板为空则隐藏
