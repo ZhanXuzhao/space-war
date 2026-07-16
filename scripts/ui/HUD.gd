@@ -40,16 +40,6 @@ var player_ship: PlayerShip = null
 var global_ref: Node
 var enemy_spawner: EnemySpawner = null
 var _target_node: Node = null  # 当前目标面板显示的节点
-var _is_resizing: bool = false
-var _resize_start_x: float = 0.0
-var _resize_start_y: float = 0.0
-var _resize_start_offset: float = 0.0
-var _resize_start_right: float = 0.0
-var _resize_start_top: float = 0.0
-var _resize_start_bottom: float = 0.0
-var _is_dragging_panel: bool = false
-var _drag_start_mouse: Vector2 = Vector2.ZERO
-var _drag_start_panel_offset: Vector2 = Vector2.ZERO
 
 ## 总览更新
 var overview_update_timer: float = 0.0
@@ -110,29 +100,11 @@ func _ready() -> void:
 	if not message_log:
 		message_log = get_node_or_null("MessageLog") as VBoxContainer
 	
-	# 总览面板四边拖拽缩放
-	for edge in ["HandleLeft", "HandleRight", "HandleTop", "HandleBottom"]:
-		var h = get_node_or_null("OverviewPanel/" + edge)
-		if h:
-			h.gui_input.connect(_on_resize_handle_input.bind("OverviewPanel", edge))
-	
-	# 目标信息面板四边拖拽缩放
-	for edge in ["THandleLeft", "THandleRight", "THandleTop", "THandleBottom"]:
-		var h = get_node_or_null("TargetPanel/" + edge)
-		if h:
-			h.gui_input.connect(_on_resize_handle_input.bind("TargetPanel", edge))
-	
-	# 总览面板标题栏拖拽移动
-	var header = get_node_or_null("OverviewPanel/HeaderBg")
-	if header:
-		header.mouse_filter = Control.MOUSE_FILTER_STOP
-		header.gui_input.connect(_on_header_drag_input)
-	
-	# 飞船状态面板标题栏拖拽移动
-	var ship_header = get_node_or_null("ShipStatusPanel/HeaderBg")
-	if ship_header:
-		ship_header.mouse_filter = Control.MOUSE_FILTER_STOP
-		ship_header.gui_input.connect(_on_ship_status_drag_input)
+	# 连接 DraggablePanel 布局变更信号 → 保存面板位置
+	for panel_name in ["OverviewPanel", "TargetPanel", "ShipStatusPanel"]:
+		var p = get_node_or_null(panel_name)
+		if p and p.has_signal("layout_changed"):
+			p.layout_changed.connect(_save_panel_layout)
 	
 	# 总览空白区域点击 → 清除相机锁定
 	if overview_list:
@@ -516,109 +488,6 @@ static func _format_distance(distance: float) -> String:
 		return "%d m" % distance
 	else:
 		return "%d m" % distance
-
-## ====== 总览面板标题栏拖拽 ======
-
-func _on_header_drag_input(event: InputEvent) -> void:
-	var panel = get_node_or_null("OverviewPanel")
-	if not panel:
-		return
-	
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			_is_dragging_panel = true
-			_drag_start_mouse = get_viewport().get_mouse_position()
-			_drag_start_panel_offset = Vector2(panel.offset_left, panel.offset_top)
-		else:
-			_is_dragging_panel = false
-			_save_panel_layout()
-	
-	if event is InputEventMouseMotion and _is_dragging_panel:
-		var mouse_pos = get_viewport().get_mouse_position()
-		var delta = mouse_pos - _drag_start_mouse
-		# offset_left 和 offset_right 同时移动相同距离，保持宽度不变
-		var panel_width = panel.offset_right - panel.offset_left
-		panel.offset_left = _drag_start_panel_offset.x + delta.x
-		panel.offset_right = panel.offset_left + panel_width
-		panel.offset_top = _drag_start_panel_offset.y + delta.y
-
-## ====== 飞船状态面板拖拽移动 ======
-
-func _on_ship_status_drag_input(event: InputEvent) -> void:
-	var panel = get_node_or_null("ShipStatusPanel")
-	if not panel:
-		return
-	
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			_is_dragging_panel = true
-			_drag_start_mouse = get_viewport().get_mouse_position()
-			_drag_start_panel_offset = Vector2(panel.offset_left, panel.offset_top)
-		else:
-			_is_dragging_panel = false
-			_save_panel_layout()
-	
-	if event is InputEventMouseMotion and _is_dragging_panel:
-		var mouse_pos = get_viewport().get_mouse_position()
-		var delta = mouse_pos - _drag_start_mouse
-		var panel_width = panel.offset_right - panel.offset_left
-		var panel_height = panel.offset_bottom - panel.offset_top
-		panel.offset_left = _drag_start_panel_offset.x + delta.x
-		panel.offset_right = panel.offset_left + panel_width
-		panel.offset_top = _drag_start_panel_offset.y + delta.y
-		panel.offset_bottom = panel.offset_top + panel_height
-
-## ====== 总览面板四边拖拽缩放 ======
-
-func _on_resize_handle_input(event: InputEvent, panel_name: String, edge: String) -> void:
-	var panel = get_node_or_null(panel_name)
-	if not panel:
-		return
-	
-	var viewport_size = get_viewport().get_visible_rect().size
-	
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			_is_resizing = true
-			var mpos = get_viewport().get_mouse_position()
-			_resize_start_x = mpos.x
-			_resize_start_y = mpos.y
-			_resize_start_offset = panel.offset_left
-			_resize_start_right = panel.offset_right
-			_resize_start_top = panel.offset_top
-			_resize_start_bottom = panel.offset_bottom
-		else:
-			_is_resizing = false
-			_save_panel_layout()
-	
-	if event is InputEventMouseMotion and _is_resizing:
-		var mpos = get_viewport().get_mouse_position()
-		var dx = mpos.x - _resize_start_x
-		var dy = mpos.y - _resize_start_y
-		
-		var is_target = panel_name == "TargetPanel"
-		var min_w = 150.0 if not is_target else 100.0
-		var min_h = 100.0 if not is_target else 80.0
-		
-		if edge.ends_with("Left"):
-			var new_offset = _resize_start_offset + dx
-			new_offset = clampf(new_offset, -viewport_size.x * 0.5, -min_w)
-			panel.offset_left = new_offset
-		elif edge.ends_with("Right"):
-			var new_right = _resize_start_right + dx
-			var min_right = panel.offset_left + min_w
-			new_right = clampf(new_right, min_right, -10.0)
-			panel.offset_right = new_right
-		elif edge.ends_with("Top"):
-			var new_top = _resize_start_top + dy
-			var bottom_in_top = viewport_size.y + panel.offset_bottom
-			new_top = clampf(new_top, 30.0, bottom_in_top - min_h)
-			panel.offset_top = new_top
-		elif edge.ends_with("Bottom"):
-			var new_bottom = _resize_start_bottom + dy
-			var min_bottom = panel.offset_top + min_h
-			new_bottom = clampf(new_bottom, min_bottom, viewport_size.y - 10.0)
-			panel.offset_bottom = new_bottom
 
 ## ====== 总览排序（点击表头切换） ======
 
