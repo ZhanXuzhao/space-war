@@ -47,7 +47,7 @@ class_name HUD
 
 ## 锁定目标跟踪
 var watched_targets: Array[Ship] = []
-var _watched_target_data: Dictionary = {}  # Ship → {card: Control, shield_sig, armor_sig, hull_sig, destroy_sig}
+var _watched_target_data: Dictionary = {}  # Ship → {card: Control, shield_sig, armor_sig, hull_sig, capacitor_sig, destroy_sig}
 var _selected_locked_target: Ship = null
 
 ## 装备面板跟踪
@@ -243,6 +243,20 @@ func _find_player() -> void:
 func _connect_ship_signals() -> void:
 	if not player_ship:
 		return
+	# 先断开可能残留的旧连接，再重新连接（防止 repeat connect 错误）
+	if player_ship.shield_changed.is_connected(_update_shield):
+		player_ship.shield_changed.disconnect(_update_shield)
+	if player_ship.armor_changed.is_connected(_update_armor):
+		player_ship.armor_changed.disconnect(_update_armor)
+	if player_ship.hull_changed.is_connected(_update_hull):
+		player_ship.hull_changed.disconnect(_update_hull)
+	if player_ship.capacitor_changed.is_connected(_update_capacitor):
+		player_ship.capacitor_changed.disconnect(_update_capacitor)
+	if player_ship.target_locked.is_connected(_on_target_locked):
+		player_ship.target_locked.disconnect(_on_target_locked)
+	if player_ship.target_lost.is_connected(_on_target_lost):
+		player_ship.target_lost.disconnect(_on_target_lost)
+	
 	player_ship.shield_changed.connect(_update_shield)
 	player_ship.armor_changed.connect(_update_armor)
 	player_ship.hull_changed.connect(_update_hull)
@@ -363,6 +377,15 @@ func _on_target_locked(target: Ship) -> void:
 				target_type_label.text = "中立"
 				target_type_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
 	
+	# 先断开可能残留的旧连接，再重新连接（防止 repeat connect 错误）
+	if target.shield_changed.is_connected(_update_target_shield):
+		target.shield_changed.disconnect(_update_target_shield)
+	if target.armor_changed.is_connected(_update_target_armor):
+		target.armor_changed.disconnect(_update_target_armor)
+	if target.hull_changed.is_connected(_update_target_hull):
+		target.hull_changed.disconnect(_update_target_hull)
+	if target.ship_destroyed.is_connected(_on_target_destroyed):
+		target.ship_destroyed.disconnect(_on_target_destroyed)
 	target.shield_changed.connect(_update_target_shield)
 	target.armor_changed.connect(_update_target_armor)
 	target.hull_changed.connect(_update_target_hull)
@@ -382,6 +405,17 @@ func _update_target_distance() -> void:
 	target_dist_label.text = "距离: " + _format_distance(dist)
 
 func _on_target_lost(target: Ship) -> void:
+	# 断开当前目标面板的信号连接（防止 repeat connect 错误）
+	if _target_node == target and is_instance_valid(target):
+		if target.shield_changed.is_connected(_update_target_shield):
+			target.shield_changed.disconnect(_update_target_shield)
+		if target.armor_changed.is_connected(_update_target_armor):
+			target.armor_changed.disconnect(_update_target_armor)
+		if target.hull_changed.is_connected(_update_target_hull):
+			target.hull_changed.disconnect(_update_target_hull)
+		if target.ship_destroyed.is_connected(_on_target_destroyed):
+			target.ship_destroyed.disconnect(_on_target_destroyed)
+	
 	if target_info_panel:
 		target_info_panel.hide()
 	_target_node = null
@@ -390,8 +424,20 @@ func _on_target_lost(target: Ship) -> void:
 	_clear_weapons_targeting(target)
 
 func _on_target_destroyed() -> void:
+	# 断开信号连接
+	if _target_node and is_instance_valid(_target_node) and _target_node is Ship:
+		var target = _target_node as Ship
+		if target.shield_changed.is_connected(_update_target_shield):
+			target.shield_changed.disconnect(_update_target_shield)
+		if target.armor_changed.is_connected(_update_target_armor):
+			target.armor_changed.disconnect(_update_target_armor)
+		if target.hull_changed.is_connected(_update_target_hull):
+			target.hull_changed.disconnect(_update_target_hull)
+		if target.ship_destroyed.is_connected(_on_target_destroyed):
+			target.ship_destroyed.disconnect(_on_target_destroyed)
 	if target_info_panel:
 		target_info_panel.hide()
+	_target_node = null
 	_update_lock_button_visibility()
 	add_message("目标已被摧毁!", Color.RED)
 
@@ -901,6 +947,15 @@ func _add_watched_target(target: Ship) -> void:
 		"destroy_sig": destroy_cb
 	}
 	
+	# 先断开可能残留的旧连接（防止 repeat connect 错误）
+	if target.shield_changed.is_connected(health_cb):
+		target.shield_changed.disconnect(health_cb)
+	if target.hull_changed.is_connected(health_cb):
+		target.hull_changed.disconnect(health_cb)
+	if target.armor_changed.is_connected(health_cb):
+		target.armor_changed.disconnect(health_cb)
+	if target.capacitor_changed.is_connected(health_cb):
+		target.capacitor_changed.disconnect(health_cb)
 	target.shield_changed.connect(health_cb)
 	target.hull_changed.connect(health_cb)
 	target.armor_changed.connect(health_cb)
@@ -927,6 +982,8 @@ func _remove_watched_target(target: Ship) -> void:
 			target.hull_changed.disconnect(data["health_sig"])
 		if target.armor_changed.is_connected(data["health_sig"]):
 			target.armor_changed.disconnect(data["health_sig"])
+		if target.capacitor_changed.is_connected(data["health_sig"]):
+			target.capacitor_changed.disconnect(data["health_sig"])
 		if target.ship_destroyed.is_connected(data["destroy_sig"]):
 			target.ship_destroyed.disconnect(data["destroy_sig"])
 	
