@@ -35,6 +35,7 @@ class_name HUD
 @export var message_log: VBoxContainer
 @export var context_menu: OverviewContextMenu
 @export var spawn_button: Button
+@export var new_game_button: Button
 @export var cam_dist_label: Label
 @export var menu_panel: Panel
 @export var btn_lock: Button
@@ -139,9 +140,11 @@ func _ready() -> void:
 		auto_lock_check.toggled.connect(_on_auto_lock_toggled)
 	if auto_attack_check:
 		auto_attack_check.toggled.connect(_on_auto_attack_toggled)
-	# 手动查找召唤按钮和消息日志
+	# 手动查找召唤按钮、新建游戏按钮和消息日志
 	if not spawn_button:
 		spawn_button = get_node_or_null("MenuPanel/SpawnButton") as Button
+	if not new_game_button:
+		new_game_button = get_node_or_null("MenuPanel/NewGameButton") as Button
 	if not message_log:
 		message_log = get_node_or_null("MessageLog") as VBoxContainer
 	
@@ -228,6 +231,10 @@ func _ready() -> void:
 			enemy_spawner = get_node_or_null("/root/SpaceWar/EnemySpawner") as EnemySpawner
 	else:
 		print("HUD: spawn_button 未绑定，无法手动召唤敌人")
+	
+	# 连接新建游戏按钮
+	if new_game_button:
+		new_game_button.pressed.connect(_on_new_game_pressed)
 
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
@@ -1196,6 +1203,27 @@ func _on_spawn_button_pressed() -> void:
 			add_message("召唤一波敌舰!", Color(1, 0.3, 0.3))
 		else:
 			add_message("错误: 找不到 EnemySpawner!", Color.RED)
+
+## ====== 新建游戏 ======
+
+func _on_new_game_pressed() -> void:
+	# 删除存档文件
+	_delete_save_files()
+	
+	# 重置全局玩家数据
+	if global_ref:
+		global_ref.init_player_data()
+	
+	# 重新加载主场景
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+func _delete_save_files() -> void:
+	# 删除面板布局存档
+	if FileAccess.file_exists(PANEL_SAVE_PATH):
+		DirAccess.remove_absolute(PANEL_SAVE_PATH)
+	# 删除自动设置存档
+	if FileAccess.file_exists(AUTO_SETTINGS_PATH):
+		DirAccess.remove_absolute(AUTO_SETTINGS_PATH)
 
 static func entry_name(node: Node) -> String:
 	if node is Ship and node.ship_data:

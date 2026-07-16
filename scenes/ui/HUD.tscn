@@ -550,6 +550,19 @@ theme_override_font_sizes/font_size = 11
 text = "召唤敌舰"
 flat = true
 
+[node name="NewGameButton" type="Button" parent="MenuPanel" unique_id=1968127150]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 55.0
+offset_right = 75.0
+offset_bottom = 100.0
+theme_override_colors/font_color = Color(0.3, 1, 0.3, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.3, 0.3, 1)
+theme_override_colors/font_hover_color = Color(0.5, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 11
+text = "新建游戏"
+flat = true
+
 [node name="MessageLog" type="VBoxContainer" parent="." unique_id=2108244219]
 custom_minimum_size = Vector2(300, 300)
 offset_left = 90.0
