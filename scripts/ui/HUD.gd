@@ -1222,11 +1222,11 @@ func _on_new_game_pressed() -> void:
 		global_ref.init_player_data()
 	
 	# 重新加载主场景
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	get_tree().reload_current_scene()
 
 func _on_restart_game_pressed() -> void:
 	# 直接重新加载主场景，不重置数据
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	get_tree().reload_current_scene()
 
 func _delete_save_files() -> void:
 	# 删除面板布局存档（含自动锁定/攻击设置）
