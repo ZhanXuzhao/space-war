@@ -19,11 +19,6 @@ var warp_charge_time: float = 3.0
 var warp_charging: bool = false
 var angular_velocity: Vector3 = Vector3.ZERO
 
-## 自动攻击
-var auto_fire: bool = false
-var auto_fire_timer: float = 0.0
-const AUTO_FIRE_INTERVAL: float = 0.5  # 自动开火检测间隔
-
 ## 环绕目标
 var orbit_target: Node3D = null
 var orbit_range: float = 1200.0
@@ -55,6 +50,8 @@ func _ready() -> void:
 	_cam_distance = camera_default_distance
 	# 创建2个激光武器
 	_create_laser_weapons()
+	# 创建3个维修装备
+	_create_repair_modules()
 
 func _process(delta: float) -> void:
 	super._process(delta)
@@ -84,13 +81,6 @@ func _process_normal_flight(delta: float) -> void:
 		var dist = global_position.distance_to(move_target)
 		if dist < 50.0:
 			has_move_order = false
-	
-	# 自动攻击
-	if auto_fire and active_target and active_target.is_alive:
-		auto_fire_timer += delta
-		if auto_fire_timer >= AUTO_FIRE_INTERVAL:
-			auto_fire_timer = 0.0
-			fire_weapons(active_target, delta)
 
 ## 移动处理
 func _handle_movement(delta: float) -> void:
@@ -306,6 +296,26 @@ func _create_laser_weapons() -> void:
 		weapon_nodes.append(weapon)
 		weapon.activate()
 
+## 创建3个维修装备：护盾维修、装甲维修、结构维修
+func _create_repair_modules() -> void:
+	var modules_info = [
+		{ "cls": ShieldBooster, "name": "护盾维修器", "amount": 120.0, "cap": 30.0, "time": 3.0 },
+		{ "cls": ArmorRepairer, "name": "装甲维修器", "amount": 80.0, "cap": 35.0, "time": 4.0 },
+		{ "cls": StructureRepairer, "name": "结构维修器", "amount": 60.0, "cap": 40.0, "time": 5.0 },
+	]
+	for info in modules_info:
+		var mod: ShipModule = info["cls"].new()
+		var mdata = ModuleData.new()
+		mdata.module_name = info["name"]
+		mdata.effect_amount = info["amount"]
+		mdata.capacitor_usage = info["cap"]
+		mdata.activation_time = info["time"]
+		mdata.slot_type = ModuleData.ModuleSlot.LOW
+		mod.module_data = mdata
+		mod.name = info["name"]
+		add_child(mod)
+		low_slot_modules.append(mod)
+
 ## 射击所有已激活武器
 func fire_weapons(target: Ship, delta: float) -> void:
 	for weapon in weapon_nodes:
@@ -359,10 +369,18 @@ func unlock_target(target: Ship) -> void:
 	super.unlock_target(target)
 
 func set_auto_fire(enabled: bool) -> void:
-	auto_fire = enabled
 	if enabled:
+		# 将所有武器分配给当前活跃目标
+		if active_target:
+			for w in weapon_nodes:
+				if w is Weapon:
+					w.assign_target(active_target)
 		add_message("自动攻击: 开启", Color(1, 0.3, 0.3))
 	else:
+		# 清除所有武器的目标分配
+		for w in weapon_nodes:
+			if w is Weapon:
+				w.clear_target()
 		add_message("自动攻击: 关闭", Color(0.7, 0.7, 0.7))
 
 func add_message(text: String, color: Color = Color.WHITE) -> void:

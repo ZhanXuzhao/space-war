@@ -96,103 +96,91 @@ offset_bottom = 24.0
 theme_override_colors/font_color = Color(0, 0.8, 1, 1)
 text = "飞 船 状 态"
 
-[node name="ShipName" type="Label" parent="ShipStatusPanel" unique_id=2012399882]
+[node name="VBoxContainer" type="VBoxContainer" parent="ShipStatusPanel" unique_id=724607310]
 layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = 5.0
-offset_top = 33.0
-offset_right = 240.0
-offset_bottom = 53.0
+offset_top = 32.0
+offset_right = -5.0
+offset_bottom = -5.0
+
+[node name="ShipName" type="Label" parent="ShipStatusPanel/VBoxContainer" unique_id=2012399882]
+layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.8, 1, 1)
 text = "秃鹫级"
 
-[node name="ShieldLabel" type="Label" parent="ShipStatusPanel" unique_id=2060220380]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 58.0
-offset_right = 240.0
-offset_bottom = 73.0
+[node name="ShieldLabel" type="Label" parent="ShipStatusPanel/VBoxContainer" unique_id=2060220380]
+layout_mode = 2
 theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
 text = "护盾: 800 / 800"
 
-[node name="ShieldBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=241923400]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 73.0
-offset_right = 240.0
-offset_bottom = 88.0
+[node name="ShieldBar" type="ProgressBar" parent="ShipStatusPanel/VBoxContainer" unique_id=241923400]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("shield_fill")
 value = 100.0
 show_percentage = false
 
-[node name="ArmorLabel" type="Label" parent="ShipStatusPanel" unique_id=340187583]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 93.0
-offset_right = 240.0
-offset_bottom = 108.0
+[node name="ArmorLabel" type="Label" parent="ShipStatusPanel/VBoxContainer" unique_id=340187583]
+layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 text = "装甲: 600 / 600"
 
-[node name="ArmorBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=1428167785]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 108.0
-offset_right = 240.0
-offset_bottom = 123.0
+[node name="ArmorBar" type="ProgressBar" parent="ShipStatusPanel/VBoxContainer" unique_id=1428167785]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("armor_fill")
 value = 100.0
 show_percentage = false
 
-[node name="HullLabel" type="Label" parent="ShipStatusPanel" unique_id=407899098]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 128.0
-offset_right = 240.0
-offset_bottom = 143.0
+[node name="HullLabel" type="Label" parent="ShipStatusPanel/VBoxContainer" unique_id=407899098]
+layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.5, 0.2, 1)
 text = "结构: 800 / 800"
 
-[node name="HullBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=1606116976]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 143.0
-offset_right = 240.0
-offset_bottom = 158.0
+[node name="HullBar" type="ProgressBar" parent="ShipStatusPanel/VBoxContainer" unique_id=1606116976]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("hull_fill")
 value = 100.0
 show_percentage = false
 
-[node name="CapacitorLabel" type="Label" parent="ShipStatusPanel" unique_id=2121360874]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 163.0
-offset_right = 240.0
-offset_bottom = 178.0
+[node name="CapacitorLabel" type="Label" parent="ShipStatusPanel/VBoxContainer" unique_id=2121360874]
+layout_mode = 2
 theme_override_colors/font_color = Color(0.2, 0.8, 1, 1)
 text = "电容: 400 / 400"
 
-[node name="CapacitorBar" type="ProgressBar" parent="ShipStatusPanel" unique_id=820649455]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 178.0
-offset_right = 240.0
-offset_bottom = 193.0
+[node name="CapacitorBar" type="ProgressBar" parent="ShipStatusPanel/VBoxContainer" unique_id=820649455]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("cap_fill")
 value = 100.0
 show_percentage = false
 
-[node name="SpeedLabel" type="Label" parent="ShipStatusPanel" unique_id=994489443]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 203.0
-offset_right = 240.0
-offset_bottom = 223.0
+[node name="SpeedLabel" type="Label" parent="ShipStatusPanel/VBoxContainer" unique_id=994489443]
+layout_mode = 2
 theme_override_colors/font_color = Color(0, 1, 0.5, 1)
 text = "速度: 0 m/s"
+
+[node name="AutoCheckHBox" type="HBoxContainer" parent="ShipStatusPanel/VBoxContainer" unique_id=831689254]
+layout_mode = 2
+
+[node name="AutoLockCheck" type="CheckBox" parent="ShipStatusPanel/VBoxContainer/AutoCheckHBox" unique_id=1834512910]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "自动锁定"
+
+[node name="AutoAttackCheck" type="CheckBox" parent="ShipStatusPanel/VBoxContainer/AutoCheckHBox" unique_id=1834512911]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 12
+text = "自动攻击"
 
 [node name="TargetPanel" type="Panel" parent="." unique_id=1979316714]
 anchors_preset = 1
@@ -409,6 +397,7 @@ offset_left = 10.0
 offset_top = 5.0
 offset_right = -10.0
 offset_bottom = 25.0
+grow_horizontal = 2
 theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
 text = "ISK: 50,000"
 horizontal_alignment = 2
@@ -562,13 +551,13 @@ text = "召唤敌舰"
 flat = true
 
 [node name="MessageLog" type="VBoxContainer" parent="." unique_id=2108244219]
-visible = false
 custom_minimum_size = Vector2(300, 300)
 offset_left = 90.0
 offset_top = 43.0
 offset_right = 303.0
 offset_bottom = 343.0
 size_flags_horizontal = 0
+mouse_filter = 2
 size_flags_vertical = 0
 
 [node name="OverviewContextMenu" type="PopupMenu" parent="." unique_id=1187790722]
@@ -634,6 +623,7 @@ offset_left = 5.0
 offset_top = 4.0
 offset_right = -5.0
 offset_bottom = 24.0
+grow_horizontal = 2
 theme_override_colors/font_color = Color(0.3, 1, 0.5, 1)
 text = "锁 定 目 标"
 
@@ -650,3 +640,81 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 alignment = 2
+
+[node name="EquipmentPanel" type="Panel" parent="." unique_id=1834512900]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 345.0
+offset_top = -110.0
+offset_right = -245.0
+offset_bottom = -5.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("overview_bg")
+script = ExtResource("2_draggable")
+min_width = 200.0
+metadata/_edit_group_ = true
+
+[node name="HandleLeft" type="Control" parent="EquipmentPanel" unique_id=1834512905]
+anchors_preset = 0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_right = 4.0
+mouse_default_cursor_shape = 10
+
+[node name="HandleRight" type="Control" parent="EquipmentPanel" unique_id=1834512906]
+anchors_preset = 0
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_right = 4.0
+mouse_default_cursor_shape = 10
+
+[node name="HandleTop" type="Control" parent="EquipmentPanel" unique_id=1834512907]
+anchors_preset = 0
+anchor_right = 1.0
+offset_top = -4.0
+offset_bottom = 4.0
+mouse_default_cursor_shape = 9
+
+[node name="HandleBottom" type="Control" parent="EquipmentPanel" unique_id=1834512908]
+anchors_preset = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -4.0
+offset_bottom = 4.0
+mouse_default_cursor_shape = 9
+
+[node name="HeaderBg" type="Panel" parent="EquipmentPanel" unique_id=1834512901]
+layout_mode = 0
+anchor_right = 1.0
+offset_bottom = 22.0
+theme_override_styles/panel = SubResource("overview_header_bg")
+
+[node name="HeaderLabel" type="Label" parent="EquipmentPanel/HeaderBg" unique_id=1834512902]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 5.0
+offset_top = 2.0
+offset_right = -5.0
+offset_bottom = 20.0
+theme_override_colors/font_color = Color(1, 0.5, 0.2, 1)
+theme_override_font_sizes/font_size = 11
+text = "装  备  面  板"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="EquipmentPanel" unique_id=1834512903]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 25.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EquipmentList" type="HBoxContainer" parent="EquipmentPanel/ScrollContainer" unique_id=1834512904]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4

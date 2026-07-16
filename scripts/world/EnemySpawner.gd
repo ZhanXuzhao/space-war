@@ -26,9 +26,12 @@ func _ready() -> void:
 		await get_tree().create_timer(0.5).timeout
 		_find_player()
 	
-	# 不自动启动生成，仅保留手动召唤功能
+	# 游戏开始时召唤3个敌人
 	if npc_scene:
-		print("EnemySpawner: 就绪（手动召唤模式），场景=", npc_scene.resource_path)
+		print("EnemySpawner: 就绪，场景=", npc_scene.resource_path)
+		# 等待一帧确保玩家飞船完全就绪
+		await get_tree().process_frame
+		spawn_wave(3)
 
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
@@ -74,9 +77,9 @@ func _try_spawn_enemy() -> void:
 	# 设置阵营（名字由 Ship.gd 自动生成）
 	enemy.faction = Ship.Faction.NPC_HOSTILE
 	
-	# 直接添加到场景树（先设位置再 add_child，防止 _ready 时敌人在 (0,0,0)）
-	enemy.global_position = spawn_pos
+	# 先添加到场景树，再设位置（反之会因不在场景树中无法计算全局变换）
 	get_tree().current_scene.add_child(enemy)
+	enemy.global_position = spawn_pos
 	
 	current_enemies.append(enemy)
 	enemy_spawned.emit(enemy)

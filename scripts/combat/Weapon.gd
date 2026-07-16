@@ -4,6 +4,8 @@ class_name Weapon
 ## 武器系统 - 安装在飞船上的武器
 
 signal weapon_fired(weapon: Weapon)
+signal target_changed(weapon: Weapon, target: Ship)
+
 @export var weapon_data: WeaponData
 @export var muzzle_node_path: NodePath  # 炮口位置
 
@@ -12,6 +14,9 @@ var is_on_cooldown: bool = false
 var cooldown_timer: float = 0.0
 var owner_ship: Ship
 var owner_targeting_range: float = 0.0
+
+## 独立目标分配 — 每个武器可攻击不同目标
+var assigned_target: Ship = null
 
 # 激光特效
 var laser_beam: MeshInstance3D
@@ -55,6 +60,13 @@ func _process(delta: float) -> void:
 		if cooldown_timer <= 0:
 			is_on_cooldown = false
 	
+	# 自动攻击已分配的目标
+	if assigned_target and is_instance_valid(assigned_target) and assigned_target.is_alive:
+		try_fire(assigned_target, delta)
+	elif assigned_target:
+		# 目标已失效，清除分配
+		_clear_assigned_target()
+	
 	# 激光光束持续更新（持续1秒后消失）
 	if laser_beam_timer > 0:
 		laser_beam_timer -= delta
@@ -70,6 +82,21 @@ func activate() -> void:
 
 func deactivate() -> void:
 	is_active = false
+
+## 分配武器攻击目标（不同武器可攻击不同目标）
+func assign_target(target: Ship) -> void:
+	if target and is_instance_valid(target) and target.is_alive:
+		assigned_target = target
+		is_active = true
+		target_changed.emit(self, target)
+
+## 清除武器目标分配
+func clear_target() -> void:
+	_clear_assigned_target()
+
+func _clear_assigned_target() -> void:
+	assigned_target = null
+	target_changed.emit(self, null)
 
 ## 尝试射击当前目标
 func try_fire(target: Ship, _delta: float) -> bool:
@@ -181,14 +208,12 @@ func _log_attack(target: Ship, is_hit: bool) -> void:
 			faction_str, attacker_name, weapon_name, target_name,
 			weapon_data.damage, weapon_data.damage_type
 		]
-		print(msg)
 		if global_ref and global_ref.has_signal("combat_log"):
 			global_ref.combat_log.emit(msg, Color(1.0, 0.3, 0.1))
 	else:
 		var msg = "[%s] %s 用「%s」攻击 %s — Miss！" % [
 			faction_str, attacker_name, weapon_name, target_name
 		]
-		print(msg)
 		if global_ref and global_ref.has_signal("combat_log"):
 			global_ref.combat_log.emit(msg, Color(0.6, 0.6, 0.6))
 

@@ -133,11 +133,6 @@ func _process_engage(delta: float) -> void:
 		current_state = AIState.PATROL
 		return
 	
-	# 检查是否应该逃跑
-	if owner_ship.get_shield_percent() < flee_shield_percent:
-		current_state = AIState.FLEE
-		return
-	
 	# 锁定目标
 	if current_target not in owner_ship.locked_targets:
 		owner_ship.lock_target(current_target)

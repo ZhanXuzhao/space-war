@@ -30,6 +30,8 @@ class_name HUD
 @export var isk_label: Label
 @export var cargo_label: Label
 @export var location_label: Label
+@export var auto_lock_check: CheckBox
+@export var auto_attack_check: CheckBox
 @export var message_log: VBoxContainer
 @export var context_menu: OverviewContextMenu
 @export var spawn_button: Button
@@ -40,10 +42,27 @@ class_name HUD
 @export var locked_panel: Control
 @export var locked_list: HBoxContainer
 
+## 装备面板
+@export var equipment_panel: Panel
+@export var equipment_list: HBoxContainer
+
 ## 锁定目标跟踪
 var watched_targets: Array[Ship] = []
 var _watched_target_data: Dictionary = {}  # Ship → {card: Control, shield_sig, armor_sig, hull_sig, destroy_sig}
 var _selected_locked_target: Ship = null
+
+## 装备面板跟踪
+var _equipment_cards: Array[EquipmentCard] = []
+var _equipment_update_timer: float = 0.0
+const EQUIPMENT_UPDATE_INTERVAL: float = 0.2
+
+## 自动锁定/攻击
+var _auto_lock_timer: float = 0.0
+const AUTO_LOCK_INTERVAL: float = 1.0
+var _auto_attack_timer: float = 0.0
+const AUTO_ATTACK_INTERVAL: float = 1.0
+var _auto_lock_enabled: bool = false
+var _auto_attack_enabled: bool = false
 
 var player_ship: PlayerShip = null
 var global_ref: Node
@@ -87,26 +106,34 @@ func _ready() -> void:
 	locked_panel = get_node_or_null("LockedPanel") as Control
 	locked_list = get_node_or_null("LockedPanel/ScrollContainer/LockedList") as HBoxContainer
 	cam_dist_label = get_node_or_null("TopBar/CamDistLabel") as Label
+	# 手动查找装备面板
+	equipment_panel = get_node_or_null("EquipmentPanel") as Panel
+	equipment_list = get_node_or_null("EquipmentPanel/ScrollContainer/EquipmentList") as HBoxContainer
 	# 手动查找飞船状态条和文字标签（场景 NodePath 绑定不生效）
 	if not shield_bar:
-		shield_bar = get_node_or_null("ShipStatusPanel/ShieldBar") as ProgressBar
+		shield_bar = get_node_or_null("ShipStatusPanel/VBoxContainer/ShieldBar") as ProgressBar
 	if not armor_bar:
-		armor_bar = get_node_or_null("ShipStatusPanel/ArmorBar") as ProgressBar
+		armor_bar = get_node_or_null("ShipStatusPanel/VBoxContainer/ArmorBar") as ProgressBar
 	if not hull_bar:
-		hull_bar = get_node_or_null("ShipStatusPanel/HullBar") as ProgressBar
+		hull_bar = get_node_or_null("ShipStatusPanel/VBoxContainer/HullBar") as ProgressBar
 	if not capacitor_bar:
-		capacitor_bar = get_node_or_null("ShipStatusPanel/CapacitorBar") as ProgressBar
+		capacitor_bar = get_node_or_null("ShipStatusPanel/VBoxContainer/CapacitorBar") as ProgressBar
 	if not shield_text_label:
-		shield_text_label = get_node_or_null("ShipStatusPanel/ShieldLabel") as Label
+		shield_text_label = get_node_or_null("ShipStatusPanel/VBoxContainer/ShieldLabel") as Label
 	if not armor_text_label:
-		armor_text_label = get_node_or_null("ShipStatusPanel/ArmorLabel") as Label
+		armor_text_label = get_node_or_null("ShipStatusPanel/VBoxContainer/ArmorLabel") as Label
 	if not hull_text_label:
-		hull_text_label = get_node_or_null("ShipStatusPanel/HullLabel") as Label
+		hull_text_label = get_node_or_null("ShipStatusPanel/VBoxContainer/HullLabel") as Label
 	if not capacitor_text_label:
-		capacitor_text_label = get_node_or_null("ShipStatusPanel/CapacitorLabel") as Label
+		capacitor_text_label = get_node_or_null("ShipStatusPanel/VBoxContainer/CapacitorLabel") as Label
 	# 手动查找速度标签
 	if not speed_label:
-		speed_label = get_node_or_null("ShipStatusPanel/SpeedLabel") as Label
+		speed_label = get_node_or_null("ShipStatusPanel/VBoxContainer/SpeedLabel") as Label
+	# 手动查找自动锁定/攻击勾选框
+	if not auto_lock_check:
+		auto_lock_check = get_node_or_null("ShipStatusPanel/VBoxContainer/AutoCheckHBox/AutoLockCheck") as CheckBox
+	if not auto_attack_check:
+		auto_attack_check = get_node_or_null("ShipStatusPanel/VBoxContainer/AutoCheckHBox/AutoAttackCheck") as CheckBox
 	# 手动查找召唤按钮和消息日志
 	if not spawn_button:
 		spawn_button = get_node_or_null("MenuPanel/SpawnButton") as Button
@@ -114,7 +141,7 @@ func _ready() -> void:
 		message_log = get_node_or_null("MessageLog") as VBoxContainer
 	
 	# 连接 DraggablePanel 布局变更信号 → 保存面板位置
-	for panel_name in ["OverviewPanel", "TargetPanel", "ShipStatusPanel", "LockedPanel"]:
+	for panel_name in ["OverviewPanel", "TargetPanel", "ShipStatusPanel", "LockedPanel", "EquipmentPanel"]:
 		var p = get_node_or_null(panel_name)
 		if p and p.has_signal("layout_changed"):
 			p.layout_changed.connect(_save_panel_layout)
@@ -184,6 +211,12 @@ func _ready() -> void:
 	if _global and _global.has_signal("combat_log"):
 		_global.combat_log.connect(_on_combat_log)
 	
+	# 连接自动锁定/攻击勾选框
+	if auto_lock_check:
+		auto_lock_check.toggled.connect(_on_auto_lock_toggled)
+	if auto_attack_check:
+		auto_attack_check.toggled.connect(_on_auto_attack_toggled)
+	
 	# 连接召唤按钮
 	if spawn_button:
 		spawn_button.pressed.connect(_on_spawn_button_pressed)
@@ -217,6 +250,7 @@ func _connect_ship_signals() -> void:
 	player_ship.target_lost.connect(_on_target_lost)
 	
 	_update_all()
+	_refresh_equipment_panel()
 
 func _process(delta: float) -> void:
 	if player_ship and is_inside_tree():
@@ -229,6 +263,26 @@ func _process(delta: float) -> void:
 	if overview_update_timer >= OVERVIEW_UPDATE_INTERVAL:
 		overview_update_timer = 0.0
 		_update_overview()
+	
+	# 定时检查装备变化
+	_equipment_update_timer += delta
+	if _equipment_update_timer >= EQUIPMENT_UPDATE_INTERVAL:
+		_equipment_update_timer = 0.0
+		_check_equipment_list_changed()
+	
+	# 自动锁定
+	if _auto_lock_enabled and player_ship and is_instance_valid(player_ship):
+		_auto_lock_timer += delta
+		if _auto_lock_timer >= AUTO_LOCK_INTERVAL:
+			_auto_lock_timer = 0.0
+			_process_auto_lock()
+	
+	# 自动攻击
+	if _auto_attack_enabled and player_ship and is_instance_valid(player_ship):
+		_auto_attack_timer += delta
+		if _auto_attack_timer >= AUTO_ATTACK_INTERVAL:
+			_auto_attack_timer = 0.0
+			_process_auto_attack()
 
 ## ====== 飞船状态更新 ======
 
@@ -913,6 +967,225 @@ func _update_watched_target_health(_current: float, _max_value: float, target: S
 	card.update_bars(target)
 
 const LOCKED_CARD_SCENE = preload("res://scenes/ui/LockedTargetCard.tscn")
+const EQUIPMENT_CARD_SCENE = preload("res://scenes/ui/WeaponCard.tscn")
+
+## ====== 装备面板 ======
+
+## 收集所有装备（武器+模块）
+func _collect_equipment() -> Array[Node]:
+	var result: Array[Node] = []
+	if not player_ship or not is_instance_valid(player_ship):
+		return result
+	
+	# 武器
+	for w in player_ship.weapon_nodes:
+		if w is Weapon:
+			result.append(w)
+	
+	# 低槽模块（维修装备等）
+	for m in player_ship.low_slot_modules:
+		if m is ShipModule:
+			result.append(m)
+	
+	return result
+
+## 刷新装备面板
+func _refresh_equipment_panel() -> void:
+	if not equipment_list or not player_ship:
+		return
+	
+	# 清空旧卡片
+	for card in _equipment_cards:
+		if is_instance_valid(card):
+			card.queue_free()
+	_equipment_cards.clear()
+	
+	var all_equip = _collect_equipment()
+	
+	# 为每个装备创建卡片
+	for equip in all_equip:
+		var card = EQUIPMENT_CARD_SCENE.instantiate() as EquipmentCard
+		equipment_list.add_child(card)
+		
+		if equip is Weapon:
+			card.setup_weapon(equip as Weapon)
+		elif equip is ShipModule:
+			card.setup_module(equip as ShipModule)
+		
+		card.card_clicked.connect(_on_equipment_card_clicked)
+		_equipment_cards.append(card)
+	
+	# 有装备时显示面板
+	if equipment_panel:
+		equipment_panel.visible = _equipment_cards.size() > 0
+
+## 检查装备列表是否有变化
+func _check_equipment_list_changed() -> void:
+	if not player_ship or not is_instance_valid(player_ship):
+		return
+	
+	var current_count = _equipment_cards.size()
+	var actual_count = _collect_equipment().size()
+	
+	if current_count != actual_count:
+		_refresh_equipment_panel()
+
+## 装备卡片点击
+func _on_equipment_card_clicked(node: Node) -> void:
+	if not node or not is_instance_valid(node):
+		return
+	
+	if node is Weapon:
+		_on_weapon_clicked(node as Weapon)
+	elif node is ShipModule:
+		_on_module_clicked(node as ShipModule)
+
+## 武器点击：分配/取消目标
+func _on_weapon_clicked(weapon: Weapon) -> void:
+	var target = _selected_locked_target
+	if not target or not is_instance_valid(target) or not target.is_alive:
+		add_message("请先在锁定面板中选择目标", Color(0.7, 0.7, 0.7))
+		return
+	
+	if weapon.assigned_target == target:
+		weapon.clear_target()
+		add_message("武器「%s」停止攻击" % weapon.weapon_data.weapon_name, Color(0.7, 0.7, 0.7))
+	else:
+		weapon.assign_target(target)
+		add_message("武器「%s」攻击 %s" % [weapon.weapon_data.weapon_name, _tname(target)], Color(1, 0.5, 0.2))
+
+## 模块点击：启动/停止循环
+func _on_module_clicked(mod: ShipModule) -> void:
+	if mod.is_active:
+		mod.deactivate()
+		add_message("装备「%s」已停止" % mod.module_data.module_name, Color(0.7, 0.7, 0.7))
+	else:
+		mod.activate()
+		add_message("装备「%s」已启动" % mod.module_data.module_name, Color(0.3, 1, 0.3))
+
+## 键盘快捷键 1-8 → 触发对应装备卡片点击
+func _unhandled_input(event: InputEvent) -> void:
+	if not event is InputEventKey or not event.pressed or event.echo:
+		return
+	
+	var key_index = -1
+	match event.keycode:
+		KEY_1: key_index = 0
+		KEY_2: key_index = 1
+		KEY_3: key_index = 2
+		KEY_4: key_index = 3
+		KEY_5: key_index = 4
+		KEY_6: key_index = 5
+		KEY_7: key_index = 6
+		KEY_8: key_index = 7
+	
+	if key_index >= 0 and key_index < _equipment_cards.size():
+		var card = _equipment_cards[key_index]
+		if card and is_instance_valid(card) and card.bound_node:
+			_on_equipment_card_clicked(card.bound_node)
+
+## 辅助：获取目标显示名称
+static func _tname(node: Node) -> String:
+	if node is Ship and node.ship_data:
+		return node.ship_data.ship_name
+	return "目标"
+
+## ====== 自动锁定/攻击 ======
+
+func _on_auto_lock_toggled(button_pressed: bool) -> void:
+	_auto_lock_enabled = button_pressed
+	if button_pressed:
+		add_message("自动锁定: 开启", Color(0.3, 0.8, 1))
+	else:
+		add_message("自动锁定: 关闭", Color(0.7, 0.7, 0.7))
+
+func _on_auto_attack_toggled(button_pressed: bool) -> void:
+	_auto_attack_enabled = button_pressed
+	if button_pressed:
+		add_message("自动攻击: 开启", Color(1, 0.3, 0.3))
+	else:
+		# 关闭时清除所有武器的目标分配
+		_clear_all_weapon_assignments()
+		add_message("自动攻击: 关闭", Color(0.7, 0.7, 0.7))
+
+## 自动锁定：扫描附近敌对飞船并锁定
+func _process_auto_lock() -> void:
+	if not player_ship or not is_instance_valid(player_ship):
+		return
+	
+	var max_locks = player_ship.max_locked_targets
+	if player_ship.locked_targets.size() >= max_locks:
+		return
+	
+	# 扫描场景中的敌对飞船
+	var root = get_tree().current_scene
+	if not root:
+		return
+	
+	var hostiles: Array[Ship] = []
+	_find_hostile_ships(root, hostiles, player_ship.global_position)
+	
+	# 排序：按距离由近到远
+	hostiles.sort_custom(func(a: Ship, b: Ship): 
+		var da = player_ship.global_position.distance_squared_to(a.global_position)
+		var db = player_ship.global_position.distance_squared_to(b.global_position)
+		return da < db
+	)
+	
+	for ship in hostiles:
+		if player_ship.locked_targets.size() >= max_locks:
+			break
+		if ship not in player_ship.locked_targets and ship.is_alive:
+			player_ship.lock_target(ship)
+			# 自动添加到锁定面板
+			if ship not in watched_targets:
+				_add_watched_target(ship)
+
+## 自动攻击：将武器分配给锁定的敌对目标
+func _process_auto_attack() -> void:
+	if not player_ship or not is_instance_valid(player_ship):
+		return
+	
+	# 获取所有锁定的敌对目标
+	var hostile_targets: Array[Ship] = []
+	for t in player_ship.locked_targets:
+		if t and is_instance_valid(t) and t.is_alive and t.faction == Ship.Faction.NPC_HOSTILE:
+			hostile_targets.append(t)
+	
+	if hostile_targets.is_empty():
+		return
+	
+	# 收集所有空闲武器（未分配目标的）
+	var idle_weapons: Array[Weapon] = []
+	for w in player_ship.weapon_nodes:
+		if w is Weapon and not w.assigned_target:
+			idle_weapons.append(w)
+	
+	if idle_weapons.is_empty():
+		return
+	
+	# 为每个空闲武器分配一个目标（轮流分配）
+	for i in range(idle_weapons.size()):
+		var target = hostile_targets[i % hostile_targets.size()]
+		if target and target.is_alive:
+			idle_weapons[i].assign_target(target)
+
+## 清除所有武器的目标分配
+func _clear_all_weapon_assignments() -> void:
+	if not player_ship or not is_instance_valid(player_ship):
+		return
+	for w in player_ship.weapon_nodes:
+		if w is Weapon:
+			w.clear_target()
+
+## 递归查找敌对飞船
+func _find_hostile_ships(node: Node, result: Array[Ship], player_pos: Vector3) -> void:
+	for child in node.get_children():
+		if child is Ship and child.faction == Ship.Faction.NPC_HOSTILE and child.is_alive:
+			var dist = player_pos.distance_to(child.global_position)
+			if dist <= player_ship.current_targeting_range:
+				result.append(child)
+		_find_hostile_ships(child, result, player_pos)
 
 ## ====== 召唤敌舰按钮 ======
 
@@ -948,6 +1221,7 @@ func _save_panel_layout() -> void:
 	var target = get_node_or_null("TargetPanel")
 	var ship_status = get_node_or_null("ShipStatusPanel")
 	var locked = get_node_or_null("LockedPanel")
+	var weapon = get_node_or_null("EquipmentPanel")
 	if overview:
 		cfg.set_value("OverviewPanel", "offset_left", overview.offset_left)
 		cfg.set_value("OverviewPanel", "offset_top", overview.offset_top)
@@ -968,6 +1242,14 @@ func _save_panel_layout() -> void:
 		cfg.set_value("LockedPanel", "offset_top", locked.offset_top)
 		cfg.set_value("LockedPanel", "offset_right", locked.offset_right)
 		cfg.set_value("LockedPanel", "offset_bottom", locked.offset_bottom)
+	if weapon:
+		cfg.set_value("EquipmentPanel", "offset_left", weapon.offset_left)
+		cfg.set_value("EquipmentPanel", "offset_top", weapon.offset_top)
+		cfg.set_value("EquipmentPanel", "offset_right", weapon.offset_right)
+		cfg.set_value("EquipmentPanel", "offset_bottom", weapon.offset_bottom)
+	# 保存自动锁定/攻击勾选状态
+	cfg.set_value("AutoSettings", "auto_lock", auto_lock_check.pressed if auto_lock_check else false)
+	cfg.set_value("AutoSettings", "auto_attack", auto_attack_check.pressed if auto_attack_check else false)
 	cfg.save(PANEL_SAVE_PATH)
 
 func _load_panel_layout() -> void:
@@ -1002,6 +1284,21 @@ func _load_panel_layout() -> void:
 			locked.offset_top = cfg.get_value("LockedPanel", "offset_top")
 			locked.offset_right = cfg.get_value("LockedPanel", "offset_right")
 			locked.offset_bottom = cfg.get_value("LockedPanel", "offset_bottom")
+	var weapon = get_node_or_null("EquipmentPanel")
+	if weapon:
+		if cfg.has_section_key("EquipmentPanel", "offset_left"):
+			weapon.offset_left = cfg.get_value("EquipmentPanel", "offset_left")
+			weapon.offset_top = cfg.get_value("EquipmentPanel", "offset_top")
+			weapon.offset_right = cfg.get_value("EquipmentPanel", "offset_right")
+			weapon.offset_bottom = cfg.get_value("EquipmentPanel", "offset_bottom")
+	# 加载自动锁定/攻击勾选状态
+	if cfg.has_section("AutoSettings"):
+		if auto_lock_check and cfg.has_section_key("AutoSettings", "auto_lock"):
+			auto_lock_check.button_pressed = cfg.get_value("AutoSettings", "auto_lock")
+			_on_auto_lock_toggled(auto_lock_check.button_pressed)
+		if auto_attack_check and cfg.has_section_key("AutoSettings", "auto_attack"):
+			auto_attack_check.button_pressed = cfg.get_value("AutoSettings", "auto_attack")
+			_on_auto_attack_toggled(auto_attack_check.button_pressed)
 
 ## ====== 消息与信息 ======
 
