@@ -48,6 +48,7 @@ func _ready() -> void:
 	module_manager = get_node_or_null("../ModuleManager")
 	_camera = $Camera3D
 	_cam_distance = camera_default_distance
+	_camera_look_at_pos = global_position
 	# 创建2个激光武器
 	_create_laser_weapons()
 	# 创建2个导弹武器
@@ -427,23 +428,33 @@ func add_message(text: String, color: Color = Color.WHITE) -> void:
 
 ## 相机锁定目标
 var camera_focus_target: Node3D = null
+## 相机平滑过渡 - 当前实际观察位置（用于插值）
+var _camera_look_at_pos: Vector3 = Vector3.ZERO
 
 func get_cam_distance() -> float:
 	return _cam_distance
 
 ## 设置相机锁定到目标（Alt+左键点击目标）
 func set_camera_focus(target: Node3D) -> void:
+	# 记录当前相机观察位置作为过渡起点
+	_camera_look_at_pos = _get_camera_look_at_pos()
 	camera_focus_target = target
 	if target:
 		add_message("相机锁定: " + target.name, Color(0.3, 0.8, 1))
 	else:
 		add_message("相机解锁", Color(0.7, 0.7, 0.7))
 
+## 获取当前相机应观察的位置
+func _get_camera_look_at_pos() -> Vector3:
+	if camera_focus_target and is_instance_valid(camera_focus_target) and camera_focus_target.is_inside_tree():
+		return camera_focus_target.global_position
+	return global_position
+
 ## 清除相机锁定
 func clear_camera_focus() -> void:
 	set_camera_focus(null)
 
-## 更新相机位置（球面坐标环绕）
+## 更新相机位置（球面坐标环绕），支持2s平滑过渡
 func _update_camera() -> void:
 	if not _camera:
 		return
@@ -455,15 +466,20 @@ func _update_camera() -> void:
 		_cam_distance * cos(rad_el) * cos(rad_az)
 	)
 	
-	# 有锁定目标时，相机以目标为中心环绕
+	# 计算期望的观察位置
+	var desired_pos: Vector3
 	if camera_focus_target and is_instance_valid(camera_focus_target) and camera_focus_target.is_inside_tree():
-		var target_pos = camera_focus_target.global_position
-		_camera.global_position = target_pos + offset
-		_camera.look_at(target_pos, Vector3.UP)
+		desired_pos = camera_focus_target.global_position
 	else:
 		camera_focus_target = null
-		_camera.global_position = global_position + offset
-		_camera.look_at(global_position, Vector3.UP)
+		desired_pos = global_position
+	
+	# 平滑插值到目标位置（指数衰减，约2秒完成86%过渡）
+	var weight = 1.0 - exp(-get_process_delta_time())
+	_camera_look_at_pos = _camera_look_at_pos.lerp(desired_pos, weight)
+	
+	_camera.global_position = _camera_look_at_pos + offset
+	_camera.look_at(_camera_look_at_pos, Vector3.UP)
 
 ## 键盘快捷键
 func _input(event: InputEvent) -> void:
