@@ -18,6 +18,11 @@ var owner_targeting_range: float = 0.0
 ## 独立目标分配 — 每个武器可攻击不同目标
 var assigned_target: Ship = null
 
+# 武器发射台建模
+var weapon_mount: MeshInstance3D
+const MOUNT_LENGTH: float = 30.0
+const MOUNT_RADIUS: float = 8.0
+
 # 激光特效
 var laser_beam: MeshInstance3D
 var laser_beam_timer: float = 0.0
@@ -33,6 +38,25 @@ func _ready() -> void:
 		owner_targeting_range = owner_ship.current_targeting_range
 	# 攻击间隔3秒
 	cooldown_timer = 3.0
+	
+	# 创建武器发射台圆柱模型
+	weapon_mount = MeshInstance3D.new()
+	weapon_mount.name = "WeaponMount"
+	var mount_mesh = CylinderMesh.new()
+	mount_mesh.top_radius = MOUNT_RADIUS
+	mount_mesh.bottom_radius = MOUNT_RADIUS
+	mount_mesh.height = MOUNT_LENGTH
+	var mount_mat = StandardMaterial3D.new()
+	mount_mat.albedo_color = Color(0.4, 0.4, 0.45)
+	mount_mat.metallic = 0.7
+	mount_mat.roughness = 0.3
+	mount_mesh.material = mount_mat
+	weapon_mount.mesh = mount_mesh
+	# 圆柱体默认沿Y轴，旋转使其沿-Z方向（飞船前进方向）
+	weapon_mount.rotate_x(deg_to_rad(90.0))
+	# 向前平移一半长度，使发射台从基点向前延伸
+	weapon_mount.position.z = -MOUNT_LENGTH / 2.0
+	add_child(weapon_mount)
 	
 	# 创建激光光束 MeshInstance3D
 	laser_beam = MeshInstance3D.new()
@@ -75,6 +99,9 @@ func _process(delta: float) -> void:
 			laser_track_target = null
 		else:
 			_update_laser_beam_position()
+	
+	# 武器发射台对准目标方向
+	_rotate_toward_target(delta)
 
 ## 激活/停用武器
 func activate() -> void:
@@ -97,6 +124,24 @@ func clear_target() -> void:
 func _clear_assigned_target() -> void:
 	assigned_target = null
 	target_changed.emit(self, null)
+
+## 武器发射台朝向目标旋转（平滑跟踪）
+func _rotate_toward_target(delta: float) -> void:
+	var target: Ship = assigned_target if assigned_target and assigned_target.is_alive else null
+	
+	if target:
+		# 将目标方向转换到武器局部坐标系（相对于父节点飞船）
+		var parent = get_parent()
+		if not parent:
+			return
+		var target_dir_global = (target.global_position - global_position).normalized()
+		var parent_basis = parent.global_basis
+		var local_dir = parent_basis.inverse() * target_dir_global
+		var target_quat = Quaternion(Basis.looking_at(local_dir, Vector3.UP))
+		quaternion = quaternion.slerp(target_quat, 3.0 * delta)
+	else:
+		# 无目标时回到默认朝向（与飞船一致，局部旋转归零）
+		quaternion = quaternion.slerp(Quaternion.IDENTITY, 1.0 * delta)
 
 ## 尝试射击当前目标
 func try_fire(target: Ship, _delta: float) -> bool:
@@ -176,8 +221,15 @@ func _update_laser_beam_position() -> void:
 
 ## 渲染激光光束（从炮口到 end_pos）
 func _render_laser_beam() -> void:
-	var muzzle = get_node_or_null(muzzle_node_path) if muzzle_node_path else self
-	var start_pos = muzzle.global_position
+	var muzzle_pos: Vector3
+	if muzzle_node_path:
+		var muzzle_node = get_node_or_null(muzzle_node_path)
+		muzzle_pos = muzzle_node.global_position if muzzle_node else global_position
+	elif weapon_mount:
+		muzzle_pos = weapon_mount.global_position + (-weapon_mount.global_basis.z * MOUNT_LENGTH / 2.0)
+	else:
+		muzzle_pos = global_position
+	var start_pos = muzzle_pos
 	var end_pos = laser_end_pos
 	var mid_point = (start_pos + end_pos) / 2.0
 	var distance = start_pos.distance_to(end_pos)
@@ -243,11 +295,18 @@ func _fire_projectile(target: Ship) -> void:
 		_direct_damage(target)
 		return
 	
-	var muzzle = get_node_or_null(muzzle_node_path) if muzzle_node_path else self
+	# 从发射台前端发射（如果有 weapon_mount 则从尖端发出）
+	var muzzle_pos: Vector3
+	if weapon_mount:
+		# 发射台前端在局部坐标系中沿 -Z 方向偏移 MOUNT_LENGTH/2
+		muzzle_pos = weapon_mount.global_position + (-weapon_mount.global_basis.z * MOUNT_LENGTH / 2.0)
+	else:
+		muzzle_pos = global_position
+	
 	var projectile = weapon_data.projectile_scene.instantiate() as Projectile
 	if projectile:
 		get_tree().root.add_child(projectile)
-		projectile.global_position = muzzle.global_position
+		projectile.global_position = muzzle_pos
 		projectile.target = target
 		projectile.damage = weapon_data.damage
 		projectile.damage_type = weapon_data.damage_type

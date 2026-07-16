@@ -50,6 +50,8 @@ func _ready() -> void:
 	_cam_distance = camera_default_distance
 	# 创建2个激光武器
 	_create_laser_weapons()
+	# 创建2个导弹武器
+	_create_missile_weapons()
 	# 创建3个维修装备
 	_create_repair_modules()
 
@@ -292,6 +294,33 @@ func _create_laser_weapons() -> void:
 		var offset = Vector3(-60 + i * 120, 0, -150)
 		weapon.position = offset
 		weapon.name = "LaserWeapon_%s" % ["Left" if i == 0 else "Right"]
+		add_child(weapon)
+		weapon_nodes.append(weapon)
+		weapon.activate()
+
+## 创建2个导弹武器
+func _create_missile_weapons() -> void:
+	var projectile_scene = preload("res://scenes/weapons/Projectile.tscn")
+	for i in range(2):
+		var weapon = Weapon.new()
+		var wdata = WeaponData.new()
+		wdata.weapon_name = "轻型导弹发射器"
+		wdata.description = "基础导弹武器，发射自导导弹"
+		wdata.weapon_type = WeaponData.WeaponType.MISSILE
+		wdata.damage = 60.0
+		wdata.damage_type = "爆炸"
+		wdata.rate_of_fire = 1.0 / 6.0
+		wdata.optimal_range = 3000.0
+		wdata.falloff_range = 5000.0
+		wdata.tracking_speed = 0.5
+		wdata.signature_resolution = 40.0
+		wdata.capacitor_usage = 15.0
+		wdata.projectile_scene = projectile_scene
+		weapon.weapon_data = wdata
+		# 左右两侧导弹挂架位置（比激光炮稍靠后、靠外）
+		var offset = Vector3(-90 + i * 180, -10, -100)
+		weapon.position = offset
+		weapon.name = "MissileLauncher_%s" % ["Left" if i == 0 else "Right"]
 		add_child(weapon)
 		weapon_nodes.append(weapon)
 		weapon.activate()
