@@ -40,6 +40,8 @@ var move_target: Vector3 = Vector3.ZERO
 
 ## 持续靠近目标（非空时每帧更新 move_target，实现追踪移动目标）
 var approach_target: Node3D = null
+## 靠近停止距离（进入此范围后停止推进，避免贴脸抖动）
+@export var approach_range: float = 500.0
 
 ## 速度指令模式（用于环绕时径向/切向速度分配）
 var has_velocity_order: bool = false
@@ -200,8 +202,16 @@ func _handle_movement(delta: float) -> void:
 		if distance < 50.0 and not approach_target:
 			has_move_order = false
 		
-		current_speed = move_toward(current_speed, max_speed * speed_factor, acceleration * delta)
-		velocity = -global_basis.z * current_speed
+		# 防超出：如果这一帧会飞过目标，直接归位
+		var move_this_frame = current_speed * delta
+		if move_this_frame > distance and distance > 0.01:
+			global_position = move_target
+			current_speed = 0.0
+			velocity = Vector3.ZERO
+			has_move_order = false
+		else:
+			current_speed = move_toward(current_speed, max_speed * speed_factor, acceleration * delta)
+			velocity = -global_basis.z * current_speed
 	else:
 		# 减速
 		current_speed = move_toward(current_speed, 0.0, deceleration * delta)
@@ -299,11 +309,21 @@ func order_approach(target: Node3D) -> void:
 func cancel_approach() -> void:
 	approach_target = null
 
-## 每帧更新靠近目标位置
+## 每帧更新靠近目标位置（进入 approach_range 后停止推进，避免贴脸抖动）
 func _update_approach(_delta: float) -> void:
 	if not approach_target or not is_instance_valid(approach_target):
 		approach_target = null
 		return
+	var dist = global_position.distance_to(approach_target.global_position)
+	if dist < approach_range:
+		# 计算刹车距离：v² / (2 * deceleration)，防止高速时太早取消导致冲出太远
+		var stopping_dist = (current_speed * current_speed) / (2.0 * maxf(deceleration, 1.0))
+		if dist < stopping_dist:
+			# 已进入刹车区 → 取消靠近，减速滑停
+			approach_target = null
+			has_move_order = false
+			return
+		# 距离足够宽裕，继续靠近
 	move_target = approach_target.global_position
 
 ## 移动到目标位置（基类实现，PlayerShip 可覆写）

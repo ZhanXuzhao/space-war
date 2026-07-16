@@ -111,8 +111,16 @@ func _handle_movement(delta: float) -> void:
 		if distance < 200.0:
 			speed_factor = distance / 200.0
 		
-		current_speed = move_toward(current_speed, max_speed * speed_factor, acceleration * delta)
-		velocity = -global_basis.z * current_speed
+		# 防超出：如果这一帧会飞过目标，直接归位
+		var move_this_frame = current_speed * delta
+		if move_this_frame > distance and distance > 0.01:
+			global_position = move_target
+			current_speed = 0.0
+			velocity = Vector3.ZERO
+			has_move_order = false
+		else:
+			current_speed = move_toward(current_speed, max_speed * speed_factor, acceleration * delta)
+			velocity = -global_basis.z * current_speed
 	else:
 		# 减速
 		current_speed = move_toward(current_speed, 0.0, deceleration * delta)
