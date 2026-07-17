@@ -1,11 +1,11 @@
 [gd_scene format=3 uid="uid://c3b1c245ymei3"]
 
-[ext_resource type="PackedScene" uid="uid://c8m84j1qo5sd8" path="res://scenes/player/PlayerShip.tscn" id="1"]
 [ext_resource type="Texture2D" uid="uid://dx84ylxdpwftc" path="res://textures/skybox/ComfyUI_00352_.png" id="1_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://d20i3004nq1fd" path="res://scenes/world/StarSystem.tscn" id="2"]
 [ext_resource type="PackedScene" uid="uid://bwxl37j1p345b" path="res://scenes/ui/HUD.tscn" id="3"]
 [ext_resource type="Script" path="res://scripts/world/EnemySpawner.gd" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/NPCShip.tscn" id="5"]
+[ext_resource type="Script" path="res://scripts/Main.gd" id="6"]
 
 [sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_1bvp3"]
 panorama = ExtResource("1_1bvp3")
@@ -23,6 +23,7 @@ ambient_light_color = Color(0.3, 0.3, 0.4, 1)
 tonemap_mode = 3
 
 [node name="SpaceWar" type="Node3D" unique_id=1316219793]
+script = ExtResource("6")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=844113563]
 environment = SubResource("env")
@@ -30,8 +31,6 @@ environment = SubResource("env")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1827136555]
 transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 0, 0)
 light_energy = 1.5
-
-[node name="PlayerShip" parent="." unique_id=389178130 instance=ExtResource("1")]
 
 [node name="HUD" parent="." unique_id=751721544 instance=ExtResource("3")]
 

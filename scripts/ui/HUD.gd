@@ -240,6 +240,12 @@ func _find_player() -> void:
 	if player_ship:
 		_connect_ship_signals()
 
+## 当玩家飞船被动态创建或替换时调用（由 Main.gd / Global.gd 触发）
+func on_player_ship_changed(new_ship: Node3D) -> void:
+	player_ship = new_ship as PlayerShip
+	if player_ship:
+		_connect_ship_signals()
+
 func _connect_ship_signals() -> void:
 	if not player_ship:
 		return

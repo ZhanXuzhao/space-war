@@ -71,7 +71,51 @@ func init_player_data() -> void:
 		"采矿技术": 1
 	}
 
-## 更换玩家飞船类型
+## 添加物品到货舱
+func add_to_cargo(item_name: String, quantity: float) -> void:
+	var current = player_cargo.get(item_name, 0.0)
+	player_cargo[item_name] = current + int(quantity)
+
+## 从货舱移除物品
+func remove_from_cargo(item_name: String, quantity: int) -> bool:
+	var current = player_cargo.get(item_name, 0)
+	if current < quantity:
+		return false
+	player_cargo[item_name] = current - quantity
+	if player_cargo[item_name] <= 0:
+		player_cargo.erase(item_name)
+	return true
+
+## 获取货舱容量使用情况
+func get_cargo_used() -> int:
+	var total = 0
+	for qty in player_cargo.values():
+		total += qty
+	return total
+
+## 飞船场景路径映射（ShipClass → 场景文件路径）
+const PLAYER_SHIP_SCENES := {
+	ShipData.ShipClass.FRIGATE: "res://scenes/player/Frigate.tscn",
+	ShipData.ShipClass.CRUISER: "res://scenes/player/Cruiser.tscn",
+	ShipData.ShipClass.BATTLESHIP: "res://scenes/player/Battleship.tscn",
+}
+
+## 根据船型获取玩家飞船场景
+func get_player_ship_scene(cls: ShipData.ShipClass) -> PackedScene:
+	var path = PLAYER_SHIP_SCENES.get(cls, PLAYER_SHIP_SCENES[ShipData.ShipClass.BATTLESHIP])
+	return load(path)
+
+## 在场景中生成玩家飞船
+func spawn_player_ship() -> Node3D:
+	var scene = get_player_ship_scene(player_ship_class)
+	var ship = scene.instantiate()
+	# 预设置船型数据（在 _ready 前生效）
+	ship.ship_data = player_ship_data_resource
+	# 添加到玩家组
+	ship.add_to_group("player_ship")
+	return ship
+
+## 更换玩家飞船类型（带场景切换）
 func change_player_ship(new_class: ShipData.ShipClass) -> void:
 	player_ship_class = new_class
 	player_ship_data_resource = ShipData.get_preset(new_class)
@@ -97,26 +141,20 @@ func change_player_ship(new_class: ShipData.ShipClass) -> void:
 		"high_slots": player_ship_data_resource.high_slots
 	}
 	
+	# 触发场景中飞船替换（如果场景已加载）
+	var root = Engine.get_main_loop().root
+	var space_war = root.get_node_or_null("/root/SpaceWar")
+	if space_war:
+		var old_ship = space_war.get_node_or_null("PlayerShip")
+		if old_ship:
+			var new_ship = spawn_player_ship()
+			new_ship.name = "PlayerShip"
+			new_ship.global_transform = old_ship.global_transform
+			space_war.add_child(new_ship)
+			old_ship.queue_free()
+			# 通知 HUD 更新引用
+			var hud = space_war.get_node_or_null("HUD")
+			if hud and hud.has_method("on_player_ship_changed"):
+				hud.on_player_ship_changed(new_ship)
+	
 	isk_changed.emit(player_isk)
-
-## 添加物品到货舱
-func add_to_cargo(item_name: String, quantity: float) -> void:
-	var current = player_cargo.get(item_name, 0.0)
-	player_cargo[item_name] = current + int(quantity)
-
-## 从货舱移除物品
-func remove_from_cargo(item_name: String, quantity: int) -> bool:
-	var current = player_cargo.get(item_name, 0)
-	if current < quantity:
-		return false
-	player_cargo[item_name] = current - quantity
-	if player_cargo[item_name] <= 0:
-		player_cargo.erase(item_name)
-	return true
-
-## 获取货舱容量使用情况
-func get_cargo_used() -> int:
-	var total = 0
-	for qty in player_cargo.values():
-		total += qty
-	return total
