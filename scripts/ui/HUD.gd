@@ -511,7 +511,11 @@ func _classify_object(obj: Node, distance: float) -> Dictionary:
 			result["name"] = obj.ship_data.ship_name
 		else:
 			result["name"] = "未知飞船"
-		result["type"] = "飞船"
+		# 显示具体船型（护卫舰/巡洋舰/战列舰）
+		if obj.ship_data:
+			result["type"] = ShipData.SHIP_CLASS_NAMES.get(obj.ship_data.ship_class, "飞船")
+		else:
+			result["type"] = "飞船"
 		result["speed"] = obj.current_speed
 		return result
 	
@@ -570,8 +574,12 @@ func _refresh_overview_list(entries: Array[Dictionary]) -> void:
 		type_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		type_label.add_theme_font_size_override("font_size", 10)
 		match entry["type"]:
-			"飞船":
+			"护卫舰":
 				type_label.add_theme_color_override("font_color", Color(1, 0.5, 0.2, 1))
+			"巡洋舰":
+				type_label.add_theme_color_override("font_color", Color(1, 0.8, 0.2, 1))
+			"战列舰":
+				type_label.add_theme_color_override("font_color", Color(1, 0.2, 0.2, 1))
 			"小行星":
 				type_label.add_theme_color_override("font_color", Color(0.5, 1, 0.5, 1))
 			"空间站":
@@ -1057,16 +1065,40 @@ const EQUIPMENT_CARD_SCENE = preload("res://scenes/ui/WeaponCard.tscn")
 
 ## ====== 装备面板 ======
 
-## 收集所有装备（武器+模块）
+## 从武器名提取配对key（如 "LaserWeapon_Left_0" → "Laser_0"）
+static func _get_weapon_pair_key(w: Weapon) -> String:
+	var parts = w.name.split("_")
+	if parts.size() >= 3:
+		return parts[0] + "_" + parts[2]  # "LaserWeapon_0"
+	return w.name
+
+## 收集所有装备（武器+模块），同一对左右武器只算一个卡片
 func _collect_equipment() -> Array[Node]:
 	var result: Array[Node] = []
 	if not player_ship or not is_instance_valid(player_ship):
 		return result
 	
-	# 武器
+	# 武器按配对key分组，每对只显示一个卡片
+	var pair_map: Dictionary = {}  # pair_key → [weapon_nodes]
 	for w in player_ship.weapon_nodes:
 		if w is Weapon:
-			result.append(w)
+			var key = _get_weapon_pair_key(w)
+			if not pair_map.has(key):
+				pair_map[key] = []
+			pair_map[key].append(w)
+	
+	# 每对只取第一个武器作为代表，用 meta 记录配对信息
+	for key in pair_map:
+		var pair = pair_map[key] as Array
+		if pair.is_empty():
+			continue
+		var primary = pair[0] as Weapon
+		# 记录配对武器引用，用于同步切换
+		primary.set_meta("paired_weapons", pair.duplicate())
+		# 更新显示名称为 "武器名 ×N"
+		if pair.size() > 1 and primary.weapon_data:
+			primary.set_meta("display_suffix", " ×%d" % pair.size())
+		result.append(primary)
 	
 	# 低槽模块（维修装备等）
 	for m in player_ship.low_slot_modules:
@@ -1126,18 +1158,27 @@ func _on_equipment_card_clicked(node: Node) -> void:
 	elif node is ShipModule:
 		_on_module_clicked(node as ShipModule)
 
-## 武器点击：分配/取消目标
+## 武器点击：分配/取消目标（同步配对武器）
 func _on_weapon_clicked(weapon: Weapon) -> void:
 	var target = _selected_locked_target
 	if not target or not is_instance_valid(target) or not target.is_alive:
 		add_message("请先在锁定面板中选择目标", Color(0.7, 0.7, 0.7))
 		return
 	
+	# 获取配对武器列表（包含自身）
+	var pair: Array = weapon.get_meta("paired_weapons", [weapon])
+	
 	if weapon.assigned_target == target:
-		weapon.clear_target()
+		# 取消所有配对武器的目标
+		for w in pair:
+			if w is Weapon:
+				w.clear_target()
 		add_message("武器「%s」停止攻击" % weapon.weapon_data.weapon_name, Color(0.7, 0.7, 0.7))
 	else:
-		weapon.assign_target(target)
+		# 为所有配对武器分配相同目标
+		for w in pair:
+			if w is Weapon:
+				w.assign_target(target)
 		add_message("武器「%s」攻击 %s" % [weapon.weapon_data.weapon_name, _tname(target)], Color(1, 0.5, 0.2))
 
 ## 模块点击：启动/停止循环

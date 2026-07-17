@@ -43,18 +43,55 @@ var _right_click_drag_start: Vector2 = Vector2.ZERO
 var is_right_click_drag: bool = false
 
 func _ready() -> void:
+	# 从全局单例获取玩家飞船数据，确保 Ship._init_stats() 使用正确船型（战列舰）
+	if Global.player_ship_data_resource:
+		ship_data = Global.player_ship_data_resource
+	
 	super._ready()
 	move_target = global_position
 	module_manager = get_node_or_null("../ModuleManager")
 	_camera = $Camera3D
 	_cam_distance = camera_default_distance
 	_camera_look_at_pos = global_position
-	# 创建2个激光武器
-	_create_laser_weapons()
-	# 创建2个导弹武器
-	_create_missile_weapons()
+	
+	# 根据船型调整环绕距离和摄像机默认距离
+	_adjust_for_ship_class()
+	
+	# 根据炮台硬点创建武器
+	_create_weapons_for_class()
 	# 创建3个维修装备
 	_create_repair_modules()
+
+## 根据船型调整环绕距离和摄像机
+func _adjust_for_ship_class() -> void:
+	if not ship_data:
+		return
+	match ship_data.ship_class:
+		ShipData.ShipClass.FRIGATE:
+			orbit_range = 1200.0
+			camera_default_distance = 900.0
+		ShipData.ShipClass.CRUISER:
+			orbit_range = 2500.0
+			camera_default_distance = 2000.0
+		ShipData.ShipClass.BATTLESHIP:
+			orbit_range = 5000.0
+			camera_default_distance = 4000.0
+	_cam_distance = camera_default_distance
+
+## 根据 turret_hardpoints 创建对应数量的武器
+## 一半为激光炮，一半为导弹发射器
+func _create_weapons_for_class() -> void:
+	if not ship_data:
+		_create_laser_weapons(2)
+		_create_missile_weapons(2)
+		return
+	
+	var hardpoints = ship_data.turret_hardpoints  # 总炮台数
+	var laser_count = int(hardpoints / 2.0)    # 一半激光
+	var missile_count = int(hardpoints / 2.0)  # 一半导弹
+	
+	_create_laser_weapons(laser_count)
+	_create_missile_weapons(missile_count)
 
 func _process(delta: float) -> void:
 	super._process(delta)
@@ -288,57 +325,93 @@ func activate_module(slot_index: int, slot_type: String) -> void:
 		return
 	module_manager.call("activate_module", slot_index, slot_type)
 
-## 创建2个激光武器（贴于飞船左右表面，高度居中，Z轴均匀分布）
-func _create_laser_weapons() -> void:
-	for i in range(2):
+## 根据船型获取激光武器参数
+func _get_laser_stats() -> Dictionary:
+	var cls = ship_data.ship_class if ship_data else ShipData.ShipClass.FRIGATE
+	match cls:
+		ShipData.ShipClass.FRIGATE:
+			return { "name": "小型激光炮", "damage": 25.0, "rof": 3.0, "optimal": 5000.0, "falloff": 10000.0, "tracking": 1.0, "cap": 5.0 }
+		ShipData.ShipClass.CRUISER:
+			return { "name": "中型激光炮", "damage": 55.0, "rof": 4.0, "optimal": 10000.0, "falloff": 15000.0, "tracking": 0.8, "cap": 12.0 }
+		ShipData.ShipClass.BATTLESHIP:
+			return { "name": "大型激光炮", "damage": 120.0, "rof": 5.0, "optimal": 20000.0, "falloff": 25000.0, "tracking": 0.5, "cap": 25.0 }
+	return {}
+
+## 根据船型获取导弹武器参数
+func _get_missile_stats() -> Dictionary:
+	var cls = ship_data.ship_class if ship_data else ShipData.ShipClass.FRIGATE
+	match cls:
+		ShipData.ShipClass.FRIGATE:
+			return { "name": "轻型导弹发射器", "damage": 60.0, "rof": 6.0, "optimal": 5000.0, "falloff": 8000.0, "tracking": 0.5, "sig": 40.0, "cap": 15.0 }
+		ShipData.ShipClass.CRUISER:
+			return { "name": "中型导弹发射器", "damage": 140.0, "rof": 8.0, "optimal": 10000.0, "falloff": 15000.0, "tracking": 0.4, "sig": 80.0, "cap": 30.0 }
+		ShipData.ShipClass.BATTLESHIP:
+			return { "name": "重型导弹发射器", "damage": 300.0, "rof": 10.0, "optimal": 20000.0, "falloff": 30000.0, "tracking": 0.3, "sig": 150.0, "cap": 50.0 }
+	return {}
+
+## 创建激光武器，沿飞船左右对称分布
+func _create_laser_weapons(count: int) -> void:
+	var stats = _get_laser_stats()
+	var ship_len = 300.0 * (ship_data.model_scale if ship_data else 1.0)
+	var ship_half_w = 75.0 * (ship_data.model_scale if ship_data else 1.0)
+	var pairs = count / 2
+	for i in range(count):
 		var weapon = Weapon.new()
 		var wdata = WeaponData.new()
-		wdata.weapon_name = "小型激光炮"
-		wdata.damage = 25.0
+		wdata.weapon_name = stats["name"]
+		wdata.damage = stats["damage"]
 		wdata.damage_type = "热能"
-		wdata.rate_of_fire = 1.0 / 3.0
-		wdata.optimal_range = 1500.0
-		wdata.falloff_range = 3000.0
-		wdata.tracking_speed = 1.0
-		wdata.capacitor_usage = 5.0
+		wdata.rate_of_fire = 1.0 / stats["rof"]
+		wdata.optimal_range = stats["optimal"]
+		wdata.falloff_range = stats["falloff"]
+		wdata.tracking_speed = stats["tracking"]
+		wdata.capacitor_usage = stats["cap"]
 		wdata.projectile_scene = null
 		weapon.weapon_data = wdata
-		# 贴于飞船左右表面(x=±75)，高度居中(y=0)，左右对称
-		var side = 1 if i == 0 else -1  # 左=+1, 右=-1
-		var offset = Vector3(75 * side, 0, -75)  # 激光炮在船体前方左右对称
+		# 左右交替布置：i=0左, i=1右, i=2左, i=3右...
+		var side = 1 if i % 2 == 0 else -1
+		var pair_idx = int(i / 2.0)  # 第几对
+		# 从船头到船尾均匀分布Z位置
+		var z_offset = -ship_len * 0.4 + (pair_idx / maxf(pairs - 1, 1)) * ship_len * 0.6 if pairs > 0 else 0.0
+		var offset = Vector3(ship_half_w * side, 0, z_offset)
 		weapon.position = offset
-		weapon.name = "LaserWeapon_%s" % ["Left" if i == 0 else "Right"]
-		# 左侧炮台安装平面法线朝左(+X)，右侧朝右(-X)
+		weapon.name = "LaserWeapon_%s_%d" % ["Left" if side > 0 else "Right", pair_idx]
 		weapon.mount_local_normal = Vector3(side, 0, 0)
 		add_child(weapon)
 		weapon_nodes.append(weapon)
 		weapon.activate()
 
-## 创建2个导弹武器
-func _create_missile_weapons() -> void:
+## 创建导弹武器，沿飞船左右对称分布
+func _create_missile_weapons(count: int) -> void:
+	var stats = _get_missile_stats()
 	var projectile_scene = preload("res://scenes/weapons/Projectile.tscn")
-	for i in range(2):
+	var ship_len = 300.0 * (ship_data.model_scale if ship_data else 1.0)
+	var ship_half_w = 75.0 * (ship_data.model_scale if ship_data else 1.0)
+	var pairs = count / 2
+	for i in range(count):
 		var weapon = Weapon.new()
 		var wdata = WeaponData.new()
-		wdata.weapon_name = "轻型导弹发射器"
-		wdata.description = "基础导弹武器，发射自导导弹"
+		wdata.weapon_name = stats["name"]
+		wdata.description = stats["name"] + "，自动追踪导弹"
 		wdata.weapon_type = WeaponData.WeaponType.MISSILE
-		wdata.damage = 60.0
+		wdata.damage = stats["damage"]
 		wdata.damage_type = "爆炸"
-		wdata.rate_of_fire = 1.0 / 6.0
-		wdata.optimal_range = 3000.0
-		wdata.falloff_range = 5000.0
-		wdata.tracking_speed = 0.5
-		wdata.signature_resolution = 40.0
-		wdata.capacitor_usage = 15.0
+		wdata.rate_of_fire = 1.0 / stats["rof"]
+		wdata.optimal_range = stats["optimal"]
+		wdata.falloff_range = stats["falloff"]
+		wdata.tracking_speed = stats["tracking"]
+		wdata.signature_resolution = stats["sig"]
+		wdata.capacitor_usage = stats["cap"]
 		wdata.projectile_scene = projectile_scene
 		weapon.weapon_data = wdata
-		# 贴于飞船左右表面(x=±75)，高度居中(y=0)，左右对称
-		var side = 1 if i == 0 else -1  # 左=+1, 右=-1
-		var offset = Vector3(75 * side, 0, 75)  # 导弹在船体后方左右对称
+		# 左右交替布置
+		var side = 1 if i % 2 == 0 else -1
+		var pair_idx = int(i / 2.0)
+		# 导弹布置在船体后方
+		var z_offset = ship_len * 0.3 + (pair_idx / maxf(pairs - 1, 1)) * ship_len * 0.2 if pairs > 0 else 0.0
+		var offset = Vector3(ship_half_w * side, 0, z_offset)
 		weapon.position = offset
-		weapon.name = "MissileLauncher_%s" % ["Left" if i == 0 else "Right"]
-		# 左侧挂架安装平面法线朝左(+X)，右侧朝右(-X)
+		weapon.name = "MissileLauncher_%s_%d" % ["Left" if side > 0 else "Right", pair_idx]
 		weapon.mount_local_normal = Vector3(side, 0, 0)
 		add_child(weapon)
 		weapon_nodes.append(weapon)

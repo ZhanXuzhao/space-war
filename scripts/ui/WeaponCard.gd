@@ -47,7 +47,9 @@ func setup_weapon(weapon: Weapon) -> void:
 		return
 	var wd = weapon.weapon_data
 	
-	name_label.text = wd.weapon_name
+	# 如果武器有配对数量后缀（如 "×2"），显示在名称上
+	var suffix = weapon.get_meta("display_suffix", "")
+	name_label.text = wd.weapon_name + suffix
 	type_label.text = WeaponData.WeaponType.keys()[wd.weapon_type] if wd.weapon_type < WeaponData.WeaponType.size() else "未知"
 	damage_label.text = "伤害: %.0f %s" % [wd.damage, wd.damage_type]
 	range_label.text = "射程: %.0fkm" % (wd.optimal_range / 1000.0)
@@ -85,13 +87,18 @@ func setup_module(mod: ShipModule) -> void:
 	_update_cooldown()
 	_update_style()
 
-## 右键切换激活/停用
+## 右键切换激活/停用（同步配对武器）
 func _toggle_active() -> void:
 	if is_weapon and bound_node is Weapon:
 		var w = bound_node as Weapon
-		w.is_active = not w.is_active
-		if not w.is_active:
-			w.clear_target()
+		var new_state = not w.is_active
+		# 同步切换配对武器
+		var pair: Array = w.get_meta("paired_weapons", [w])
+		for pw in pair:
+			if pw is Weapon:
+				pw.is_active = new_state
+				if not new_state:
+					pw.clear_target()
 		_update_style()
 		_update_status()
 	elif is_module and bound_node is ShipModule:

@@ -2,7 +2,7 @@ extends Node
 class_name EnemySpawner
 
 ## 敌方飞船生成器 - 在太空中随机生成敌对NPC飞船
-## 会间隔随机时间在玩家周围生成敌方飞船，并有跃迁入场效果
+## 附带船型分布控制，可配置护卫舰/巡洋舰/战列舰的生成比例
 
 signal enemy_spawned(enemy: Ship)
 
@@ -12,6 +12,11 @@ signal enemy_spawned(enemy: Ship)
 @export var wave_size: int = 1                 # 每波召唤数量
 @export var npc_scene: PackedScene             # NPC飞船场景
 @export var enable_warp_effect: bool = true     # 是否启用跃迁入场效果
+
+# 船型分布权重（总和不必为1）
+@export var frigate_weight: float = 0.5
+@export var cruiser_weight: float = 0.5
+@export var battleship_weight: float = 0.0
 
 var player_ship: Ship = null
 var current_enemies: Array[Ship] = []
@@ -47,7 +52,24 @@ func _process(_delta: float) -> void:
 func _cleanup_destroyed() -> void:
 	current_enemies = current_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive)
 
+## 根据权重随机选择船型
+func _pick_ship_class() -> ShipData.ShipClass:
+	var total = frigate_weight + cruiser_weight + battleship_weight
+	if total <= 0:
+		return ShipData.ShipClass.FRIGATE
+	var roll = randf() * total
+	if roll < frigate_weight:
+		return ShipData.ShipClass.FRIGATE
+	elif roll < frigate_weight + cruiser_weight:
+		return ShipData.ShipClass.CRUISER
+	else:
+		return ShipData.ShipClass.BATTLESHIP
+
 func _try_spawn_enemy() -> void:
+	_try_spawn_class(_pick_ship_class())
+
+## 生成指定船型的敌舰
+func _try_spawn_class(ship_class: ShipData.ShipClass) -> void:
 	if current_enemies.size() >= max_enemies:
 		return
 	if not npc_scene:
@@ -71,30 +93,40 @@ func _try_spawn_enemy() -> void:
 		sin(angle) * distance
 	)
 	
-	# 设置阵营（名字由 Ship.gd 自动生成）
+	# 设置阵营和船型
 	enemy.faction = Ship.Faction.NPC_HOSTILE
+	# 预设置 ship_data，覆盖 Ship._ready() 中的随机分配
+	var preset = ShipData.get_preset(ship_class)
+	preset.ship_name = Ship.generate_random_name(ship_class)
+	enemy.ship_data = preset
 	
 	# 先将敌人置于 spawn_pos 再添加到场景树
-	# 用 transform.origin 设置局部坐标绕过 global_position 的树依赖检查
 	enemy.transform.origin = spawn_pos
 	get_tree().current_scene.add_child(enemy)
-	# 再强制同步一次全局位置（确保 _ready 中使用 global_position 正确）
+	# 再强制同步一次全局位置
 	enemy.global_position = spawn_pos
 	
 	current_enemies.append(enemy)
 	enemy_spawned.emit(enemy)
-	print("EnemySpawner: 生成敌舰，位置=", spawn_pos, " 当前敌舰数=", current_enemies.size())
+	print("EnemySpawner: 生成[%s] 位置=" % ShipData.SHIP_CLASS_NAMES.get(ship_class, "?"), spawn_pos, " 当前敌舰数=", current_enemies.size())
 	
-	# 跃迁入场效果
+	# 跃迁入场效果（按船型缩放入场光效大小）
 	if enable_warp_effect:
-		_start_warp_effect(spawn_pos)
+		_start_warp_effect(spawn_pos, ship_class)
 
-func _start_warp_effect(pos: Vector3) -> void:
-	# 简单的光效指示
+func _start_warp_effect(pos: Vector3, ship_class: ShipData.ShipClass = ShipData.ShipClass.FRIGATE) -> void:
+	# 按船型决定光效大小
+	var size = 15.0
+	match ship_class:
+		ShipData.ShipClass.CRUISER:
+			size = 40.0
+		ShipData.ShipClass.BATTLESHIP:
+			size = 80.0
+	
 	var warp_marker = MeshInstance3D.new()
 	var sphere = SphereMesh.new()
-	sphere.radius = 15.0
-	sphere.height = 30.0
+	sphere.radius = size
+	sphere.height = size * 2.0
 	sphere.material = StandardMaterial3D.new()
 	sphere.material.albedo_color = Color(0.3, 0.6, 1.0, 0.6)
 	sphere.material.emission_enabled = true

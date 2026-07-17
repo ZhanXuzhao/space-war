@@ -25,6 +25,8 @@ func _ready() -> void:
 	owner_ship = get_parent() as Ship
 	if owner_ship and owner_ship.faction == Ship.Faction.NPC_HOSTILE:
 		current_state = AIState.PATROL
+		# 根据船型调整AI战斗参数
+		_adjust_for_ship_class()
 		# 如果没有武器，自动创建基础武器
 		_ensure_weapon()
 	
@@ -36,34 +38,86 @@ func _ready() -> void:
 	await get_tree().create_timer(0.5).timeout
 	_setup_auto_patrol()
 
+## 根据船型调整AI战斗参数
+func _adjust_for_ship_class() -> void:
+	if not owner_ship or not owner_ship.ship_data:
+		return
+	match owner_ship.ship_data.ship_class:
+		ShipData.ShipClass.FRIGATE:
+			detection_range = 20000.0
+			engagement_range = 5000.0   # 小型武器射程
+			orbit_range = 4000.0        # 80% 射程
+		ShipData.ShipClass.CRUISER:
+			detection_range = 30000.0
+			engagement_range = 10000.0  # 中型武器射程
+			orbit_range = 8000.0
+			flee_shield_percent = 20.0
+		ShipData.ShipClass.BATTLESHIP:
+			detection_range = 40000.0
+			engagement_range = 20000.0  # 大型武器射程
+			orbit_range = 16000.0
+			flee_shield_percent = 15.0
+
 func _ensure_weapon() -> void:
-	# 如果 owner_ship 没有任何武器节点，创建2个激光武器（与玩家飞船相同的设置）
+	# 如果 owner_ship 没有任何武器节点，根据炮台硬点数量创建武器
 	if owner_ship.weapon_nodes.is_empty():
 		var ship = owner_ship
-		for i in range(2):
+		var hardpoints = ship.ship_data.turret_hardpoints if ship.ship_data else 4
+		
+		# 根据船型调整武器参数（小/中/大型，射程5/10/20km）
+		var base_damage = 15.0
+		var base_optimal = 5000.0
+		var base_falloff = 10000.0
+		var weapon_name = "小型NPC激光炮"
+		var rof = 3.0
+		var tracking = 1.0
+		var cap_usage = 2.0
+		if ship.ship_data:
+			match ship.ship_data.ship_class:
+				ShipData.ShipClass.CRUISER:
+					base_damage = 40.0
+					base_optimal = 10000.0
+					base_falloff = 15000.0
+					weapon_name = "中型NPC激光炮"
+					rof = 4.0
+					tracking = 0.8
+					cap_usage = 6.0
+				ShipData.ShipClass.BATTLESHIP:
+					base_damage = 80.0
+					base_optimal = 20000.0
+					base_falloff = 25000.0
+					weapon_name = "大型NPC激光炮"
+					rof = 5.0
+					tracking = 0.5
+					cap_usage = 12.0
+		
+		var ship_half_w = 75.0 * (ship.ship_data.model_scale if ship.ship_data else 1.0)
+		var ship_len = 300.0 * (ship.ship_data.model_scale if ship.ship_data else 1.0)
+		var pairs = hardpoints / 2
+		
+		for i in range(hardpoints):
 			var weapon = Weapon.new()
 			var wdata = WeaponData.new()
-			wdata.weapon_name = "NPC激光炮"
-			wdata.damage = 15.0
+			wdata.weapon_name = weapon_name
+			wdata.damage = base_damage
 			wdata.damage_type = "热能"
-			wdata.rate_of_fire = 1.0 / 3.0
-			wdata.optimal_range = 1500.0
-			wdata.falloff_range = 3000.0
-			wdata.tracking_speed = 1.0
-			wdata.capacitor_usage = 2.0
+			wdata.rate_of_fire = 1.0 / rof
+			wdata.optimal_range = base_optimal
+			wdata.falloff_range = base_falloff
+			wdata.tracking_speed = tracking
+			wdata.capacitor_usage = cap_usage
 			wdata.projectile_scene = null
 			weapon.weapon_data = wdata
-			# 贴于飞船左右表面(x=±75)，左右对称，与玩家一致
-			var side = 1 if i == 0 else -1  # 左=+1, 右=-1
-			var offset = Vector3(75 * side, 0, -75)  # 激光炮在船体前方左右对称
+			# 左右交替布置
+			var side = 1 if i % 2 == 0 else -1
+			var pair_idx = int(i / 2.0)
+			var z_offset = -ship_len * 0.4 + (pair_idx / maxf(pairs - 1, 1)) * ship_len * 0.6 if pairs > 0 else 0.0
+			var offset = Vector3(ship_half_w * side, 0, z_offset)
 			weapon.position = offset
-			weapon.name = "NPCLaser_%s" % ["Left" if i == 0 else "Right"]
-			# 同玩家飞船：左侧炮台安装平面法线朝左(+X)，右侧朝右(-X)
+			weapon.name = "NPCLaser_%s_%d" % ["Left" if side > 0 else "Right", pair_idx]
 			weapon.mount_local_normal = Vector3(side, 0, 0)
 			weapon.activate()
-			# 用 call_deferred 延迟添加武器节点
 			ship.call_deferred("add_child", weapon)
-			# 数组操作是安全的，立即添加
 			ship.weapon_nodes.append(weapon)
 
 func _setup_auto_patrol() -> void:

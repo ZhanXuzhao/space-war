@@ -27,25 +27,33 @@ var mining_yield_total: int = 0
 func _ready() -> void:
 	init_player_data()
 
+var player_ship_class: ShipData.ShipClass = ShipData.ShipClass.BATTLESHIP
+var player_ship_data_resource: ShipData = null  # 当前玩家的 ShipData 资源
+
 func init_player_data() -> void:
+	# 使用 ShipData 预设初始化玩家数据
+	player_ship_class = ShipData.ShipClass.BATTLESHIP
+	player_ship_data_resource = ShipData.get_preset(player_ship_class)
+	
 	player_ship_data = {
-		"name": "秃鹫级",
-		"hull_max": 800,
-		"armor_max": 600,
-		"shield_max": 800,
-		"capacitor_max": 400,
-		"capacitor_recharge": 20.0,
-		"max_speed": 1000.0,
-		"warp_speed": 3.0,
-		"mass": 1200000,
-		"cargo_capacity": 500,
-		"drone_bay": 20,
-		"max_locked_targets": 4,
-		"max_turret_hardpoints": 3,
-		"max_launcher_hardpoints": 1,
-		"low_slots": 3,
-		"mid_slots": 3,
-		"high_slots": 4
+		"name": player_ship_data_resource.ship_name,
+		"ship_class": player_ship_class,
+		"hull_max": player_ship_data_resource.hull_hp,
+		"armor_max": player_ship_data_resource.armor_hp,
+		"shield_max": player_ship_data_resource.shield_hp,
+		"capacitor_max": player_ship_data_resource.capacitor_max,
+		"capacitor_recharge": player_ship_data_resource.capacitor_recharge_rate,
+		"max_speed": player_ship_data_resource.max_speed,
+		"warp_speed": player_ship_data_resource.warp_speed,
+		"mass": player_ship_data_resource.mass,
+		"cargo_capacity": player_ship_data_resource.cargo_capacity,
+		"drone_bay": player_ship_data_resource.drone_bay,
+		"max_locked_targets": player_ship_data_resource.max_locked_targets,
+		"max_turret_hardpoints": player_ship_data_resource.turret_hardpoints,
+		"max_launcher_hardpoints": player_ship_data_resource.launcher_hardpoints,
+		"low_slots": player_ship_data_resource.low_slots,
+		"mid_slots": player_ship_data_resource.mid_slots,
+		"high_slots": player_ship_data_resource.high_slots
 	}
 	
 	# 初始物品
@@ -62,6 +70,34 @@ func init_player_data() -> void:
 		"炮术": 1,
 		"采矿技术": 1
 	}
+
+## 更换玩家飞船类型
+func change_player_ship(new_class: ShipData.ShipClass) -> void:
+	player_ship_class = new_class
+	player_ship_data_resource = ShipData.get_preset(new_class)
+	
+	player_ship_data = {
+		"name": player_ship_data_resource.ship_name,
+		"ship_class": int(new_class),
+		"hull_max": player_ship_data_resource.hull_hp,
+		"armor_max": player_ship_data_resource.armor_hp,
+		"shield_max": player_ship_data_resource.shield_hp,
+		"capacitor_max": player_ship_data_resource.capacitor_max,
+		"capacitor_recharge": player_ship_data_resource.capacitor_recharge_rate,
+		"max_speed": player_ship_data_resource.max_speed,
+		"warp_speed": player_ship_data_resource.warp_speed,
+		"mass": player_ship_data_resource.mass,
+		"cargo_capacity": player_ship_data_resource.cargo_capacity,
+		"drone_bay": player_ship_data_resource.drone_bay,
+		"max_locked_targets": player_ship_data_resource.max_locked_targets,
+		"max_turret_hardpoints": player_ship_data_resource.turret_hardpoints,
+		"max_launcher_hardpoints": player_ship_data_resource.launcher_hardpoints,
+		"low_slots": player_ship_data_resource.low_slots,
+		"mid_slots": player_ship_data_resource.mid_slots,
+		"high_slots": player_ship_data_resource.high_slots
+	}
+	
+	isk_changed.emit(player_isk)
 
 ## 添加物品到货舱
 func add_to_cargo(item_name: String, quantity: float) -> void:

@@ -75,30 +75,121 @@ func _ready() -> void:
 	_setup_velocity_arrow()
 	_setup_nose_color()
 
-## 随机飞船名字池
-static var _ship_names: Array[String] = [
-	"镰刀级", "匕首级", "长矛级", "利剑级", "战斧级",
-	"铁锤级", "巨锤级", "流星级", "彗星级", "脉冲级",
-	"风暴级", "雷霆级", "暗影级", "毒蛇级", "狂怒级",
-	"猎犬级", "恶狼级", "猛虎级", "猎鹰级", "游隼级",
-	"复仇级", "毁灭级", "审判级", "末日级", "深渊级",
-]
-static var _name_index: int = 0
+## 随机飞船名字池（按船型，由 ShipData.SHIP_CLASS_NAMES_POOL 管理）
+## 公开接口：根据船型获取随机名字（供 EnemySpawner 等外部调用）
+static func generate_random_name(ship_class: ShipData.ShipClass) -> String:
+	return _get_random_name(ship_class)
 
 func _init_stats() -> void:
+	# 如果没有 ship_data，根据阵营自动生成一个合适船型的默认数据
+	if not ship_data:
+		ship_data = _create_default_ship_data()
+	
+	# 从 ship_data 应用属性到飞船
+	_apply_ship_data()
+	
+	# 初始化当前值
 	current_shield = max_shield
 	current_armor = max_armor
 	current_hull = max_hull
 	current_capacitor = max_capacitor
-	# 如果没有 ship_data，自动生成一个并分配随机名字
-	if not ship_data:
-		ship_data = ShipData.new()
-		ship_data.ship_name = _get_random_name()
 
-static func _get_random_name() -> String:
-	var name_str = _ship_names[_name_index % _ship_names.size()]
-	_name_index += 1
-	return name_str
+## 根据阵营和船型生成默认 ShipData
+func _create_default_ship_data() -> ShipData:
+	var default_class: ShipData.ShipClass
+	
+	# NPC 敌对飞船随机分配船型（护卫舰/巡洋舰各半）
+	if faction == Faction.NPC_HOSTILE:
+		var roll = randf()
+		if roll < 0.5:        # 50% 护卫舰
+			default_class = ShipData.ShipClass.FRIGATE
+		else:                  # 50% 巡洋舰
+			default_class = ShipData.ShipClass.CRUISER
+	else:
+		default_class = ShipData.ShipClass.FRIGATE
+	
+	var data = ShipData.get_preset(default_class)
+	data.ship_name = _get_random_name(data.ship_class)
+	return data
+
+## 将 ShipData 的属性应用到飞船的导出变量上
+func _apply_ship_data() -> void:
+	if not ship_data:
+		return
+	
+	max_shield = ship_data.shield_hp
+	max_armor = ship_data.armor_hp
+	max_hull = ship_data.hull_hp
+	max_capacitor = ship_data.capacitor_max
+	capacitor_recharge = ship_data.capacitor_recharge_rate
+	max_speed = ship_data.max_speed
+	cargo_capacity = ship_data.cargo_capacity
+	signature_radius = ship_data.signature_radius
+	max_locked_targets = ship_data.max_locked_targets
+	
+	# 根据船型调整机动性
+	match ship_data.ship_class:
+		ShipData.ShipClass.FRIGATE:
+			acceleration = 200.0
+			deceleration = 100.0
+			rotation_speed = 3.0
+			approach_range = 300.0
+		ShipData.ShipClass.CRUISER:
+			acceleration = 80.0
+			deceleration = 40.0
+			rotation_speed = 1.5
+			approach_range = 600.0
+		ShipData.ShipClass.BATTLESHIP:
+			acceleration = 30.0
+			deceleration = 15.0
+			rotation_speed = 0.6
+			approach_range = 1000.0
+	
+	# 应用模型缩放
+	_apply_model_scale()
+
+## 根据 ship_data.model_scale 缩放飞船模型
+func _apply_model_scale() -> void:
+	if not ship_data:
+		return
+	var scale_factor = ship_data.model_scale
+	# 缩放所有 MeshInstance3D 子节点（保留 EngineGlow 不缩放）
+	for child in get_children():
+		var mi = child as MeshInstance3D
+		if mi and mi.name != "EngineGlow":
+			# 去除已有缩放再应用新缩放
+			var base = mi.scale.length() / sqrt(3.0) if mi.scale != Vector3.ONE else 1.0
+			mi.scale = Vector3.ONE * scale_factor * base
+	# 缩放碰撞形状（先 duplicate 确保每个飞船实例独立，不污染场景共享资源）
+	var cs = get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if cs and cs.shape is BoxShape3D:
+		var box = cs.shape.duplicate() as BoxShape3D
+		box.size = box.size * scale_factor
+		cs.shape = box
+
+	# NoseSphere 已通过上面的 transform 循环缩放，不需要再处理网格尺寸
+
+static var _frigate_index: int = 0
+static var _cruiser_index: int = 0
+static var _battleship_index: int = 0
+
+static func _get_random_name(ship_class: ShipData.ShipClass) -> String:
+	var pool = ShipData.SHIP_CLASS_NAMES_POOL.get(ship_class, ShipData.SHIP_CLASS_NAMES_POOL[ShipData.ShipClass.FRIGATE])
+	var idx: int
+	match ship_class:
+		ShipData.ShipClass.FRIGATE:
+			idx = _frigate_index % pool.size()
+			_frigate_index += 1
+		ShipData.ShipClass.CRUISER:
+			idx = _cruiser_index % pool.size()
+			_cruiser_index += 1
+		ShipData.ShipClass.BATTLESHIP:
+			idx = _battleship_index % pool.size()
+			_battleship_index += 1
+		_:
+			idx = _frigate_index % pool.size()
+			_frigate_index += 1
+	return pool[idx] + "级"
 
 ## 创建速度箭头（绿色锥体，方向朝前，长度随速度变化）
 func _setup_velocity_arrow() -> void:
