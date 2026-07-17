@@ -6,7 +6,7 @@ class_name EnemySpawner
 
 signal enemy_spawned(enemy: Ship)
 
-@export var spawn_distance_min: float = 3000.0  # 最小生成距离（距玩家）
+@export var spawn_distance_min: float = 5000.0  # 最小生成距离（距玩家）
 @export var spawn_distance_max: float = 10000.0 # 最大生成距离（距玩家）
 @export var max_enemies: int = 8               # 最大同时存在敌人数
 @export var wave_size: int = 1                 # 每波召唤数量
@@ -82,15 +82,15 @@ func _try_spawn_class(ship_class: ShipData.ShipClass) -> void:
 		print("EnemySpawner: 实例化NPC失败!")
 		return
 	
-	# 随机位置（以玩家为中心，在水平面上随机角度和距离）
-	var angle = randf() * 2.0 * PI
-	var distance = randf_range(spawn_distance_min, spawn_distance_max)
-	var height_offset = randf_range(-500.0, 500.0)
+	# 球坐标系随机位置（以玩家为中心）
+	var r = randf_range(spawn_distance_min, spawn_distance_max)   # 半径 5km-10km
+	var theta = randf_range(-PI / 2.0, PI / 2.0)                 # 纬度（-90° ~ 90°）
+	var phi = randf() * 2.0 * PI                                 # 经度（0° ~ 360°）
 	
 	var spawn_pos = player_ship.global_position + Vector3(
-		cos(angle) * distance,
-		height_offset,
-		sin(angle) * distance
+		r * cos(theta) * cos(phi),
+		r * sin(theta),
+		r * cos(theta) * sin(phi)
 	)
 	
 	# 设置阵营和船型
