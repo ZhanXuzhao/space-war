@@ -3,7 +3,7 @@ class_name Projectile
 
 ## 弹体/导弹 - 从武器发射的投射物
 
-@export var speed: float = 500.0  # 飞行速度
+@export var speed: float = 1000.0  # 飞行速度
 @export var max_lifetime: float = 5.0  # 最长存在时间
 @export var explosion_effect: PackedScene  # 爆炸特效
 
