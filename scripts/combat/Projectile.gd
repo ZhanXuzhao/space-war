@@ -11,10 +11,13 @@ var target: Ship
 var damage: float
 var damage_type: String
 var owner_ship: Ship
+var scale_size: float = 1.0  # 弹体缩放（由发射时传入）
 var lifetime: float = 0.0
 var has_hit: bool = false
 
 func _ready() -> void:
+	# 应用缩放
+	scale = Vector3.ONE * scale_size
 	# 面向目标
 	if target:
 		look_at(target.global_position, Vector3.UP)

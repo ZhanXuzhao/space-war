@@ -359,6 +359,7 @@ func _fire_projectile(target: Ship) -> void:
 		projectile.damage = weapon_data.damage
 		projectile.damage_type = weapon_data.damage_type
 		projectile.owner_ship = owner_ship
+		projectile.scale_size = weapon_data.projectile_scale
 
 ## 直接造成伤害（无弹体时）
 func _direct_damage(target: Ship) -> void:

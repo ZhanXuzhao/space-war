@@ -342,11 +342,11 @@ func _get_missile_stats() -> Dictionary:
 	var cls = ship_data.ship_class if ship_data else ShipData.ShipClass.FRIGATE
 	match cls:
 		ShipData.ShipClass.FRIGATE:
-			return { "name": "轻型导弹发射器", "damage": 60.0, "rof": 6.0, "optimal": 5000.0, "falloff": 8000.0, "tracking": 0.5, "sig": 40.0, "cap": 15.0 }
+			return { "name": "轻型导弹发射器", "damage": 60.0, "rof": 6.0, "optimal": 5000.0, "falloff": 8000.0, "tracking": 0.5, "sig": 40.0, "cap": 15.0, "proj_scale": 0.6 }
 		ShipData.ShipClass.CRUISER:
-			return { "name": "中型导弹发射器", "damage": 140.0, "rof": 8.0, "optimal": 10000.0, "falloff": 15000.0, "tracking": 0.4, "sig": 80.0, "cap": 30.0 }
+			return { "name": "中型导弹发射器", "damage": 140.0, "rof": 8.0, "optimal": 10000.0, "falloff": 15000.0, "tracking": 0.4, "sig": 80.0, "cap": 30.0, "proj_scale": 1.0 }
 		ShipData.ShipClass.BATTLESHIP:
-			return { "name": "重型导弹发射器", "damage": 300.0, "rof": 10.0, "optimal": 20000.0, "falloff": 30000.0, "tracking": 0.3, "sig": 150.0, "cap": 50.0 }
+			return { "name": "重型导弹发射器", "damage": 300.0, "rof": 10.0, "optimal": 20000.0, "falloff": 30000.0, "tracking": 0.3, "sig": 150.0, "cap": 50.0, "proj_scale": 1.8 }
 	return {}
 
 ## 创建激光武器，沿飞船左右对称分布
@@ -403,6 +403,7 @@ func _create_missile_weapons(count: int) -> void:
 		wdata.signature_resolution = stats["sig"]
 		wdata.capacitor_usage = stats["cap"]
 		wdata.projectile_scene = projectile_scene
+		wdata.projectile_scale = stats["proj_scale"]
 		weapon.weapon_data = wdata
 		# 左右交替布置
 		var side = 1 if i % 2 == 0 else -1
@@ -417,20 +418,50 @@ func _create_missile_weapons(count: int) -> void:
 		weapon_nodes.append(weapon)
 		weapon.activate()
 
-## 创建3个维修装备：护盾维修、装甲维修、结构维修
+## 根据船型获取维修装备参数
+func _get_repair_module_stats() -> Dictionary:
+	var cls = ship_data.ship_class if ship_data else ShipData.ShipClass.FRIGATE
+	match cls:
+		ShipData.ShipClass.FRIGATE:
+			return {
+				"prefix": "轻型",
+				"shield": { "amount": 120.0, "cap": 30.0, "time": 3.0 },
+				"armor":  { "amount": 80.0,  "cap": 35.0, "time": 4.0 },
+				"structure": { "amount": 60.0, "cap": 40.0, "time": 5.0 },
+			}
+		ShipData.ShipClass.CRUISER:
+			return {
+				"prefix": "中型",
+				"shield": { "amount": 300.0, "cap": 60.0, "time": 3.5 },
+				"armor":  { "amount": 200.0, "cap": 70.0, "time": 4.5 },
+				"structure": { "amount": 150.0, "cap": 80.0, "time": 5.5 },
+			}
+		ShipData.ShipClass.BATTLESHIP:
+			return {
+				"prefix": "重型",
+				"shield": { "amount": 600.0, "cap": 120.0, "time": 4.0 },
+				"armor":  { "amount": 400.0, "cap": 140.0, "time": 5.0 },
+				"structure": { "amount": 300.0, "cap": 160.0, "time": 6.0 },
+			}
+	return {}
+
+## 创建3个维修装备：护盾维修、装甲维修、结构维修（按船型分大中小）
 func _create_repair_modules() -> void:
+	var stats = _get_repair_module_stats()
+	var prefix = stats.get("prefix", "轻型")
 	var modules_info = [
-		{ "cls": ShieldBooster, "name": "护盾维修器", "amount": 120.0, "cap": 30.0, "time": 3.0 },
-		{ "cls": ArmorRepairer, "name": "装甲维修器", "amount": 80.0, "cap": 35.0, "time": 4.0 },
-		{ "cls": StructureRepairer, "name": "结构维修器", "amount": 60.0, "cap": 40.0, "time": 5.0 },
+		{ "cls": ShieldBooster,    "key": "shield",    "name": prefix + "护盾维修器" },
+		{ "cls": ArmorRepairer,    "key": "armor",     "name": prefix + "装甲维修器" },
+		{ "cls": StructureRepairer, "key": "structure", "name": prefix + "结构维修器" },
 	]
 	for info in modules_info:
+		var s = stats[info["key"]]
 		var mod: ShipModule = info["cls"].new()
 		var mdata = ModuleData.new()
 		mdata.module_name = info["name"]
-		mdata.effect_amount = info["amount"]
-		mdata.capacitor_usage = info["cap"]
-		mdata.activation_time = info["time"]
+		mdata.effect_amount = s["amount"]
+		mdata.capacitor_usage = s["cap"]
+		mdata.activation_time = s["time"]
 		mdata.slot_type = ModuleData.ModuleSlot.LOW
 		mod.module_data = mdata
 		mod.name = info["name"]
