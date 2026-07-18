@@ -23,11 +23,31 @@ func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
 	if ships.size() > 0:
 		player_ship = ships[0] as Ship
-		_player_controller = player_ship.get_node_or_null("PlayerController") if player_ship else null
+		_player_controller = _find_player_controller(player_ship)
 	if not player_ship:
 		player_ship = get_node_or_null("/root/SpaceWar/PlayerShip") as Ship
 		if player_ship:
-			_player_controller = player_ship.get_node_or_null("PlayerController")
+			_player_controller = _find_player_controller(player_ship)
+	# 如果以上方式都找不到 PlayerController，尝试在当前父节点中查找
+	if not _player_controller:
+		_player_controller = _find_player_controller(get_parent())
+
+## 在飞船节点中查找 PlayerController（支持名称查找和类型查找）
+func _find_player_controller(ship: Node) -> Node:
+	if not ship:
+		return null
+	# 优先通过名称查找
+	var ctrl = ship.get_node_or_null("PlayerController")
+	if ctrl and ctrl.has_method("set_camera_focus"):
+		return ctrl
+	# 遍历所有直接子节点查找 PlayerController 类型的节点
+	for child in ship.get_children():
+		if child is PlayerController:
+			return child
+		# 也检查子节点名称
+		if child.has_method("set_camera_focus"):
+			return child
+	return null
 
 func _input(event: InputEvent) -> void:
 	if not player_ship:
