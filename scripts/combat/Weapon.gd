@@ -330,10 +330,11 @@ func _calculate_hit_chance(target: Ship, distance: float) -> float:
 	var optimal = weapon_data.optimal_range
 	var falloff = weapon_data.falloff_range
 	
-	# 距离衰减
+	# 距离衰减（导弹追踪目标，不受失准范围影响）
 	var range_chance = 1.0
-	if distance > optimal:
-		range_chance = maxf(0.0, 1.0 - (distance - optimal) / falloff)
+	if weapon_data.weapon_type != WeaponData.WeaponType.MISSILE:
+		if distance > optimal:
+			range_chance = maxf(0.0, 1.0 - (distance - optimal) / falloff)
 	
 	# 跟踪速度与目标信号半径
 	var tracking_factor = weapon_data.tracking_speed * target.signature_radius / 40.0
