@@ -5,6 +5,9 @@ extends Node
 
 enum ClickMode { SELECT, MOVE, ATTACK, MINE }
 
+## Alt+点击目标时发射，通知 HUD 显示目标信息面板
+signal target_info_requested(node: Node3D)
+
 var current_mode: ClickMode = ClickMode.SELECT
 var player_ship: PlayerShip = null
 var camera: Camera3D
@@ -81,16 +84,19 @@ func _handle_left_click(event: InputEventMouseButton) -> void:
 	query.collide_with_areas = true
 	var result = space_state.intersect_ray(query)
 	
-	# Alt+左键 → 相机锁定/解锁
+	# Alt+左键 → 显示目标信息面板 + 相机锁定
 	if event.alt_pressed:
 		if result:
 			var collider = result.collider
 			if collider is Node3D:
 				player_ship.set_camera_focus(collider)
+				target_info_requested.emit(collider)
 			else:
 				player_ship.clear_camera_focus()
+				target_info_requested.emit(null)
 		else:
 			player_ship.clear_camera_focus()
+			target_info_requested.emit(null)
 		return
 	
 	if result:

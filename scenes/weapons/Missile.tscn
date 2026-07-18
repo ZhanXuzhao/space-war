@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://ddu00u6fpwgg8"]
+
+[ext_resource type="Script" uid="uid://cffauc4427nwg" path="res://scripts/combat/Missile.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/effects/Explosion.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://drwws3kmdnm7d" path="res://models/missile.glb" id="3_fjtsq"]
+
+[node name="Missile" type="Node3D" unique_id=1726153330]
+script = ExtResource("1")
+speed = 800.0
+max_lifetime = 6.0
+explosion_effect = ExtResource("2")
+
+[node name="missile" parent="." unique_id=1791283813 instance=ExtResource("3_fjtsq")]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 0)

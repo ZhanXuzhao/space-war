@@ -412,7 +412,7 @@ func _create_laser_weapons(count: int) -> void:
 ## 创建导弹武器，沿飞船左右对称分布
 func _create_missile_weapons(count: int) -> void:
 	var stats = _get_missile_stats()
-	var projectile_scene = preload("res://scenes/weapons/Projectile.tscn")
+	var projectile_scene = preload("res://scenes/weapons/Missile.tscn")
 	var ship_len = 300.0 * (ship_data.model_scale if ship_data else 1.0)
 	var ship_half_w = 75.0 * (ship_data.model_scale if ship_data else 1.0)
 	var pairs = count / 2

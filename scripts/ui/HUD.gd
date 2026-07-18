@@ -270,8 +270,31 @@ func _connect_ship_signals() -> void:
 	player_ship.target_locked.connect(_on_target_locked)
 	player_ship.target_lost.connect(_on_target_lost)
 	
+	# 连接 InteractionController 的 Alt+点击信号
+	_connect_interaction_signals()
+	
 	_update_all()
 	_refresh_equipment_panel()
+
+## 连接 InteractionController 的 Alt+点击信号
+func _connect_interaction_signals() -> void:
+	if not player_ship:
+		return
+	var ic = player_ship.get_node_or_null("InteractionController")
+	if ic and ic.has_signal("target_info_requested"):
+		if ic.target_info_requested.is_connected(_on_interaction_alt_click):
+			ic.target_info_requested.disconnect(_on_interaction_alt_click)
+		ic.target_info_requested.connect(_on_interaction_alt_click)
+
+## 处理 InteractionController 的 Alt+点击 → 显示目标信息面板（与总览点击效果一致）
+func _on_interaction_alt_click(node: Node3D) -> void:
+	if node and is_instance_valid(node):
+		_show_target_info(node)
+	else:
+		# Alt+点击虚空 → 隐藏目标面板
+		if target_info_panel:
+			target_info_panel.hide()
+		_target_node = null
 
 func _process(delta: float) -> void:
 	if player_ship and is_inside_tree():
@@ -704,14 +727,14 @@ func _on_overview_label_input(event: InputEvent, entry: Dictionary) -> void:
 		# Alt+左键 → 相机锁定/解锁
 		if event.alt_pressed:
 			var target_node = entry.get("node")
-			if target_node is Node3D and is_instance_valid(target_node):
+			if is_instance_valid(target_node) and target_node is Node3D:
 				player_ship.set_camera_focus(target_node)
 			else:
 				player_ship.clear_camera_focus()
 		# Ctrl+左键 → 锁定目标（仅飞船，已锁定的不再重复操作）
 		elif event.ctrl_pressed:
 			var target_node = entry.get("node")
-			if target_node is Ship and is_instance_valid(target_node) and target_node not in watched_targets:
+			if is_instance_valid(target_node) and target_node is Ship and target_node not in watched_targets:
 				_add_watched_target(target_node)
 				add_message("已锁定: " + entry_name(target_node), Color(0.3, 0.8, 1))
 		else:
