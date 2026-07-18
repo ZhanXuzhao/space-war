@@ -54,9 +54,37 @@ func _hit_target() -> void:
 		target.take_damage(damage, damage_type, owner_ship)
 	
 	# 爆炸效果
-	if explosion_effect:
-		var explosion = explosion_effect.instantiate()
-		get_tree().root.add_child(explosion)
-		explosion.global_position = global_position
+	_spawn_hit_explosion()
 	
 	queue_free()
+
+func _spawn_hit_explosion() -> void:
+	## 命中爆炸特效
+	## 优先使用 explosion_effect（由 WeaponData 配置），否则使用默认 Explosion 场景
+	var explosion_scene: PackedScene = null
+	
+	if explosion_effect:
+		explosion_scene = explosion_effect
+	else:
+		# 默认爆炸
+		explosion_scene = preload("res://scenes/effects/Explosion.tscn")
+	
+	if not explosion_scene:
+		return
+	
+	var explosion = explosion_scene.instantiate()
+	get_tree().root.add_child(explosion)
+	explosion.global_position = global_position
+	
+	# 弹体爆炸统一为小尺寸
+	if explosion is Explosion:
+		explosion.size = Explosion.ExplosionSize.SMALL
+		# 根据所有者阵营设置颜色
+		if owner_ship and owner_ship is Ship:
+			match owner_ship.faction:
+				Ship.Faction.PLAYER:
+					explosion.faction_color = Color(0.3, 0.7, 1.0)
+				Ship.Faction.NPC_HOSTILE:
+					explosion.faction_color = Color(1.0, 0.4, 0.05)
+				_:
+					explosion.faction_color = Color(1.0, 0.7, 0.2)

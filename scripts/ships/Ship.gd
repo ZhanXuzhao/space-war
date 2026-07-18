@@ -345,8 +345,38 @@ func _destroy() -> void:
 	queue_free()
 
 func _spawn_explosion() -> void:
-	# 简单的爆炸粒子效果 - 可通过场景扩展
-	pass
+	## 创建爆炸特效
+	## 根据船型和阵营自动选择大小和颜色
+	var explosion_scene = preload("res://scenes/effects/Explosion.tscn")
+	if not explosion_scene:
+		return
+	
+	var explosion = explosion_scene.instantiate() as Explosion
+	get_tree().root.add_child(explosion)
+	explosion.global_position = global_position
+	
+	# 根据船型设置爆炸大小
+	if ship_data:
+		match ship_data.ship_class:
+			ShipData.ShipClass.FRIGATE:
+				explosion.size = Explosion.ExplosionSize.MEDIUM
+			ShipData.ShipClass.CRUISER:
+				explosion.size = Explosion.ExplosionSize.LARGE
+			ShipData.ShipClass.BATTLESHIP:
+				explosion.size = Explosion.ExplosionSize.HUGE
+			_:
+				explosion.size = Explosion.ExplosionSize.MEDIUM
+	
+	# 根据阵营设置爆炸颜色
+	match faction:
+		Faction.PLAYER:
+			explosion.faction_color = Color(0.2, 0.6, 1.0)     # 蓝白
+		Faction.NPC_HOSTILE:
+			explosion.faction_color = Color(1.0, 0.4, 0.05)    # 橙红
+		Faction.NPC_FRIENDLY:
+			explosion.faction_color = Color(0.3, 1.0, 0.3)     # 绿
+		_:
+			explosion.faction_color = Color(1.0, 0.6, 0.1)     # 默认橙黄
 
 ## 锁定目标
 func lock_target(target: Ship) -> bool:

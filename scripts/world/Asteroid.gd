@@ -46,6 +46,8 @@ func mine(amount: float) -> float:
 		current_ore = 0
 		is_depleted = true
 		asteroid_depleted.emit(self)
+		# 小爆炸特效
+		_spawn_depleted_explosion()
 		# 隐藏视觉，等待重生
 		hide()
 		await get_tree().create_timer(respawn_time).timeout
@@ -57,6 +59,17 @@ func _respawn() -> void:
 	current_ore = randf_range(min_ore_amount, max_ore_amount)
 	is_depleted = false
 	show()
+
+## 开采耗竭时产生小爆炸
+func _spawn_depleted_explosion() -> void:
+	var explosion_scene = preload("res://scenes/effects/Explosion.tscn")
+	if not explosion_scene:
+		return
+	var explosion = explosion_scene.instantiate() as Explosion
+	get_tree().root.add_child(explosion)
+	explosion.global_position = global_position
+	explosion.size = Explosion.ExplosionSize.SMALL
+	explosion.faction_color = Color(0.6, 0.5, 0.3)  # 岩石棕黄色
 
 ## 获取矿石价值
 func get_ore_value() -> int:
