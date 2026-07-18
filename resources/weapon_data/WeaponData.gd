@@ -20,4 +20,5 @@ enum WeaponType { LASER, PROJECTILE, MISSILE, HYBRID }
 @export var cpu_usage: float = 10.0
 @export var projectile_scene: PackedScene  # 弹体场景
 @export var projectile_scale: float = 1.0  # 弹体缩放系数
+@export var projectile_speed: float = 1000.0  # 弹体飞行速度
 @export var base_price: int = 10000

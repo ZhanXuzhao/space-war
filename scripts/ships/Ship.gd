@@ -206,11 +206,11 @@ func _get_missile_stats() -> Dictionary:
 	var cls = ship_data.ship_class if ship_data else ShipData.ShipClass.FRIGATE
 	match cls:
 		ShipData.ShipClass.FRIGATE:
-			return { "name": "轻型导弹发射器", "damage": 60.0, "rof": 6.0, "optimal": 5000.0, "falloff": 8000.0, "tracking": 0.5, "sig": 40.0, "cap": 15.0, "proj_scale": 0.6 }
+			return { "name": "轻型导弹发射器", "damage": 60.0, "rof": 6.0, "optimal": 5000.0, "falloff": 8000.0, "tracking": 0.5, "sig": 40.0, "cap": 15.0, "proj_scale": 0.6, "speed": 2000.0 }
 		ShipData.ShipClass.CRUISER:
-			return { "name": "中型导弹发射器", "damage": 140.0, "rof": 8.0, "optimal": 10000.0, "falloff": 15000.0, "tracking": 0.4, "sig": 80.0, "cap": 30.0, "proj_scale": 1.0 }
+			return { "name": "中型导弹发射器", "damage": 140.0, "rof": 8.0, "optimal": 10000.0, "falloff": 15000.0, "tracking": 0.4, "sig": 80.0, "cap": 30.0, "proj_scale": 1.0, "speed": 2000.0 }
 		ShipData.ShipClass.BATTLESHIP:
-			return { "name": "重型导弹发射器", "damage": 300.0, "rof": 10.0, "optimal": 20000.0, "falloff": 30000.0, "tracking": 0.3, "sig": 150.0, "cap": 50.0, "proj_scale": 1.8 }
+			return { "name": "重型导弹发射器", "damage": 300.0, "rof": 10.0, "optimal": 20000.0, "falloff": 30000.0, "tracking": 0.3, "sig": 150.0, "cap": 50.0, "proj_scale": 1.8, "speed": 2000.0 }
 	return {}
 
 ## 根据船型获取NPC武器参数
@@ -281,6 +281,7 @@ func _create_missile_weapons(count: int) -> void:
 		wdata.capacitor_usage = stats["cap"]
 		wdata.projectile_scene = projectile_scene
 		wdata.projectile_scale = stats["proj_scale"]
+		wdata.projectile_speed = stats["speed"]
 		weapon.weapon_data = wdata
 		_install_turret_weapon(weapon, i, count, "MissileLauncher", 0.3, 0.5)
 
