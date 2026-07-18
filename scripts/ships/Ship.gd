@@ -80,9 +80,6 @@ func _ready() -> void:
 	_init_stats()
 	_setup_velocity_arrow()
 	_setup_nose_color()
-	# 修复：将 CollisionShape3D 从 ModelGroup 移到 Ship 的直接子级，
-	# 避免嵌套缩放导致物理引擎射线检测失效
-	_fix_collision_shape_parent()
 
 ## 随机飞船名字池（按船型，由 ShipData.SHIP_CLASS_NAMES_POOL 管理）
 ## 公开接口：根据船型获取随机名字（供 EnemySpawner 等外部调用）
@@ -158,13 +155,11 @@ func _apply_ship_data() -> void:
 	_apply_model_scale()
 
 ## 根据 ship_data.model_scale 缩放飞船模型
-## 场景中所有需要被缩放的视觉/物理节点应放在 ModelGroup 子节点下
+## 直接缩放根节点，碰撞体和视觉子节点自动跟随
 func _apply_model_scale() -> void:
 	if not ship_data:
 		return
-	var model_group = get_node_or_null("ModelGroup") as Node3D
-	if model_group:
-		model_group.scale = Vector3.ONE * ship_data.model_scale
+	scale = Vector3.ONE * ship_data.model_scale
 
 static var _frigate_index: int = 0
 static var _cruiser_index: int = 0
@@ -228,30 +223,6 @@ func _update_velocity_arrow() -> void:
 	_velocity_arrow.scale.x = 0.3 + speed_ratio * 0.7
 	_velocity_arrow.scale.y = 0.3 + speed_ratio * 0.7
 	_velocity_arrow.visible = speed_ratio > 0.01
-
-## 将 CollisionShape3D 从 ModelGroup 移到 Ship 的直接子级
-## 解决嵌套缩放导致物理引擎射线检测不到碰撞体的问题
-func _fix_collision_shape_parent() -> void:
-	var old_cs = find_child("CollisionShape3D", true, false)
-	if not old_cs or not old_cs is CollisionShape3D:
-		return
-	# 如果已经在直接子级，不需要处理
-	if old_cs.get_parent() == self:
-		return
-	var shape_res = old_cs.shape
-	if not shape_res:
-		return
-	# 创建新的 CollisionShape3D 挂在 Ship 直接子级
-	var new_cs = CollisionShape3D.new()
-	new_cs.shape = shape_res
-	# 计算相对 Ship 的局部变换
-	var local_xform = old_cs.global_transform * global_transform.affine_inverse()
-	new_cs.transform = local_xform
-	new_cs.disabled = old_cs.disabled
-	add_child(new_cs)
-	# 禁用旧的碰撞体
-	old_cs.disabled = true
-	print("[Ship] 已迁移 CollisionShape3D 到直接子级: ", name)
 
 ## 设置船头圆球颜色（按阵营，圆球本身在场景中定义）
 func _setup_nose_color() -> void:

@@ -34,20 +34,18 @@ collision_layer = 2
 collision_mask = 3
 script = ExtResource("1")
 
-[node name="ModelGroup" type="Node3D" parent="." unique_id=1358419353]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelGroup" unique_id=1191244860]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1191244860]
 shape = SubResource("shape_cruiser")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="ModelGroup" unique_id=1780633273]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1780633273]
 visible = false
 mesh = SubResource("mesh_cruiser")
 
-[node name="NoseSphere" type="MeshInstance3D" parent="ModelGroup" unique_id=1577238382]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -150)
+[node name="NoseSphere" type="MeshInstance3D" parent="." unique_id=1577238382]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -200)
 mesh = SubResource("nose_mesh_cruiser")
 
-[node name="cruiser" parent="ModelGroup" unique_id=1372931430 instance=ExtResource("2_g86g1")]
+[node name="cruiser" parent="." unique_id=1372931430 instance=ExtResource("2_g86g1")]
 transform = Transform3D(-1.3113416e-06, 0, 30, 0, 30, 0, -30, 0, -1.3113416e-06, 0, 0, -68.482414)
 
 [node name="EngineGlow" type="MeshInstance3D" parent="." unique_id=1803833528]
