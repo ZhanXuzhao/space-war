@@ -8,7 +8,7 @@ signal player_undocked(station: Station)
 
 @export var station_name: String = "加达里主星 - 8号星域"
 @export var station_type: String = "贸易站"
-@export var docking_range: float = 500.0
+@export var docking_range: float = 50000.0
 
 var is_player_docked: bool = false
 var player_ship_ref: Ship = null
