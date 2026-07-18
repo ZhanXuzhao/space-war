@@ -10,8 +10,14 @@ signal enemy_spawned(enemy: Ship)
 @export var spawn_distance_max: float = 10000.0 # 最大生成距离（距玩家）
 @export var max_enemies: int = 8               # 最大同时存在敌人数
 @export var wave_size: int = 1                 # 每波召唤数量
-@export var npc_scene: PackedScene             # NPC飞船场景
 @export var enable_warp_effect: bool = true     # 是否启用跃迁入场效果
+
+## 飞船场景映射（共用场景，敌我同模）
+const NPC_SHIP_SCENES := {
+	ShipData.ShipClass.FRIGATE: preload("res://scenes/player/Frigate.tscn"),
+	ShipData.ShipClass.CRUISER: preload("res://scenes/player/Cruiser.tscn"),
+	ShipData.ShipClass.BATTLESHIP: preload("res://scenes/player/Battleship.tscn"),
+}
 
 # 船型分布权重（总和不必为1）
 @export var frigate_weight: float = 0.5
@@ -32,8 +38,7 @@ func _ready() -> void:
 		_find_player()
 	
 	# 游戏开始时不生成敌人（可通过按钮手动召唤）
-	if npc_scene:
-		print("EnemySpawner: 就绪，场景=", npc_scene.resource_path)
+	print("EnemySpawner: 就绪，共用场景模式已启用")
 
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
@@ -72,12 +77,11 @@ func _try_spawn_enemy() -> void:
 func _try_spawn_class(ship_class: ShipData.ShipClass) -> void:
 	if current_enemies.size() >= max_enemies:
 		return
-	if not npc_scene:
-		return
 	if not player_ship or not is_instance_valid(player_ship):
 		return
 	
-	var enemy = npc_scene.instantiate() as Ship
+	var ship_scene = NPC_SHIP_SCENES.get(ship_class, NPC_SHIP_SCENES[ShipData.ShipClass.FRIGATE])
+	var enemy = ship_scene.instantiate() as Ship
 	if not enemy:
 		print("EnemySpawner: 实例化NPC失败!")
 		return
@@ -99,6 +103,18 @@ func _try_spawn_class(ship_class: ShipData.ShipClass) -> void:
 	var preset = ShipData.get_preset(ship_class)
 	preset.ship_name = Ship.generate_random_name(ship_class)
 	enemy.ship_data = preset
+	
+	# 动态添加 AI 控制器（共用场景中不包含此节点）
+	if not enemy.get_node_or_null("AIController"):
+		var ai = Node.new()
+		ai.name = "AIController"
+		ai.set_script(preload("res://scripts/ai/AIController.gd"))
+		ai.detection_range = 20000.0
+		ai.engagement_range = 5000.0
+		ai.orbit_range = 4000.0
+		ai.flee_shield_percent = 25.0
+		ai.aggro_chance = 1.0
+		enemy.add_child(ai)
 	
 	# 先将敌人置于 spawn_pos 再添加到场景树
 	enemy.transform.origin = spawn_pos

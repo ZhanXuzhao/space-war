@@ -49,10 +49,9 @@ func _ready() -> void:
 	
 	super._ready()
 	move_target = global_position
-	module_manager = get_node_or_null("../ModuleManager")
-	_camera = $Camera3D
-	_cam_distance = camera_default_distance
-	_camera_look_at_pos = global_position
+	
+	# 动态创建玩家专用节点（共用场景中不包含这些节点）
+	_setup_player_nodes()
 	
 	# 根据船型调整环绕距离和摄像机默认距离
 	_adjust_for_ship_class()
@@ -61,6 +60,35 @@ func _ready() -> void:
 	_create_weapons_for_class()
 	# 创建3个维修装备
 	_create_repair_modules()
+
+## 动态创建/获取玩家专用节点（Camera3D、InteractionController、ModuleManager）
+func _setup_player_nodes() -> void:
+	_camera = $Camera3D as Camera3D
+	if not _camera:
+		_camera = Camera3D.new()
+		_camera.name = "Camera3D"
+		_camera.near = 0.5
+		_camera.far = 100000.0
+		_camera.current = true
+		var cam_basis = Basis(Vector3(1, 0, 0), Vector3(0, 0.949, -0.316), Vector3(0, 0.316, 0.949))
+		_camera.transform = Transform3D(cam_basis, Vector3(0, 10, 30))
+		add_child(_camera)
+	
+	_cam_distance = camera_default_distance
+	_camera_look_at_pos = global_position
+	
+	module_manager = $ModuleManager
+	if not module_manager:
+		module_manager = Node.new()
+		module_manager.name = "ModuleManager"
+		module_manager.set_script(preload("res://scripts/modules/ModuleManager.gd"))
+		add_child(module_manager)
+	
+	if not $InteractionController:
+		var ic = Node.new()
+		ic.name = "InteractionController"
+		ic.set_script(preload("res://scripts/ui/InteractionController.gd"))
+		add_child(ic)
 
 ## 根据船型调整环绕距离和摄像机
 func _adjust_for_ship_class() -> void:

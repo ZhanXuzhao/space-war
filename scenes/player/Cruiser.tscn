@@ -1,8 +1,6 @@
 [gd_scene format=3 uid="uid://cruiser_player_scene"]
 
-[ext_resource type="Script" uid="uid://bid5f54syddgu" path="res://scripts/ships/PlayerShip.gd" id="1"]
-[ext_resource type="Script" uid="uid://ssrd4p0dehxx" path="res://scripts/ui/InteractionController.gd" id="3"]
-[ext_resource type="Script" uid="uid://c87pfak81fkb2" path="res://scripts/modules/ModuleManager.gd" id="4"]
+[ext_resource type="Script" uid="uid://c1nuc4fpc40w3" path="res://scripts/ships/Ship.gd" id="1"]
 
 [sub_resource type="BoxShape3D" id="shape_cruiser"]
 size = Vector3(150, 75, 300)
@@ -50,18 +48,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 0)
 light_color = Color(0.4, 0.9, 0.8, 1)
 light_energy = 2.0
 omni_range = 60.0
-
-[node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.949, -0.316, 0, 0.316, 0.949, 0, 10, 30)
-current = true
-near = 0.5
-far = 100000.0
-
-[node name="InteractionController" type="Node" parent="."]
-script = ExtResource("3")
-
-[node name="ModuleManager" type="Node" parent="."]
-script = ExtResource("4")
 
 [node name="NoseSphere" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -150)

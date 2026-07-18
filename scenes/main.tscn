@@ -4,7 +4,6 @@
 [ext_resource type="PackedScene" uid="uid://d20i3004nq1fd" path="res://scenes/world/StarSystem.tscn" id="2"]
 [ext_resource type="PackedScene" uid="uid://bwxl37j1p345b" path="res://scenes/ui/HUD.tscn" id="3"]
 [ext_resource type="Script" path="res://scripts/world/EnemySpawner.gd" id="4"]
-[ext_resource type="PackedScene" path="res://scenes/enemies/NPCShip.tscn" id="5"]
 [ext_resource type="Script" path="res://scripts/Main.gd" id="6"]
 
 [sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_1bvp3"]
@@ -44,4 +43,3 @@ spawn_distance_min = 3000.0
 spawn_distance_max = 10000.0
 max_enemies = 8
 enable_warp_effect = true
-npc_scene = ExtResource("5")

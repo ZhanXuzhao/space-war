@@ -111,6 +111,8 @@ func spawn_player_ship() -> Node3D:
 	var ship = scene.instantiate()
 	# 预设置船型数据（在 _ready 前生效）
 	ship.ship_data = player_ship_data_resource
+	# 将脚本替换为 PlayerShip.gd（增加玩家专用功能：摄像机、交互控制、模块管理）
+	ship.set_script(preload("res://scripts/ships/PlayerShip.gd"))
 	# 添加到玩家组
 	ship.add_to_group("player_ship")
 	return ship

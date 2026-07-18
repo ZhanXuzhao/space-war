@@ -60,6 +60,9 @@ var mid_slot_modules: Array[Node] = []
 var low_slot_modules: Array[Node] = []
 var weapon_nodes: Array[Node] = []
 
+## 防重复初始化标记（脚本热替换时使用）
+var _initialized: bool = false
+
 ## 速度箭头
 var _velocity_arrow: MeshInstance3D
 
@@ -71,6 +74,9 @@ enum Faction { PLAYER, NPC_FRIENDLY, NPC_HOSTILE, NEUTRAL }
 @export var faction: Faction = Faction.NEUTRAL
 
 func _ready() -> void:
+	if _initialized:
+		return
+	_initialized = true
 	_init_stats()
 	_setup_velocity_arrow()
 	_setup_nose_color()
