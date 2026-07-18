@@ -60,6 +60,12 @@ var mid_slot_modules: Array[Node] = []
 var low_slot_modules: Array[Node] = []
 var weapon_nodes: Array[Node] = []
 
+## 飞船模型尺寸常量（与场景中碰撞箱尺寸一致）
+## 注意：飞船根节点已通过 _apply_model_scale() 设置了 scale = model_scale
+## 炮台作为子节点，局部坐标使用碰撞箱原始尺寸即可，父节点缩放会自动作用于子节点
+const SHIP_LENGTH: float = 300.0
+const SHIP_HALF_WIDTH: float = 75.0
+
 ## 防重复初始化标记（脚本热替换时使用）
 var _initialized: bool = false
 
@@ -160,6 +166,31 @@ func _apply_model_scale() -> void:
 	if not ship_data:
 		return
 	scale = Vector3.ONE * ship_data.model_scale
+
+## 在指定炮台硬点位置安装武器（敌我共用）
+## 自动计算左右交替位置，沿船身前后分布
+## @param weapon:        要安装的 Weapon 节点
+## @param index:         硬点序号（0 开始）
+## @param total:         硬点总数
+## @param name_prefix:   武器名前缀
+## @param z_start:       船头方向 Z 偏移比例（负值=前方），默认 -0.4
+## @param z_end:         船尾方向 Z 偏移比例（正值=后方），默认 0.6
+func _install_turret_weapon(weapon: Weapon, index: int, total: int,
+		name_prefix: String, z_start: float = -0.4, z_end: float = 0.6) -> void:
+	var side = 1 if index % 2 == 0 else -1
+	var pair_idx = index / 2
+	var pairs = total / 2
+	
+	var z_offset = SHIP_LENGTH * z_start
+	if pairs > 1:
+		z_offset += (float(pair_idx) / (pairs - 1)) * SHIP_LENGTH * (z_end - z_start)
+	
+	weapon.position = Vector3(SHIP_HALF_WIDTH * side, 0, z_offset)
+	weapon.name = "%s_%s_%d" % [name_prefix, "Left" if side > 0 else "Right", pair_idx]
+	weapon.mount_local_normal = Vector3(side, 0, 0)
+	add_child(weapon)
+	weapon_nodes.append(weapon)
+	weapon.activate()
 
 static var _frigate_index: int = 0
 static var _cruiser_index: int = 0

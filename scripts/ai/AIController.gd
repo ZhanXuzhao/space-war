@@ -91,10 +91,6 @@ func _ensure_weapon() -> void:
 					tracking = 0.5
 					cap_usage = 12.0
 		
-		var ship_half_w = 75.0 * (ship.ship_data.model_scale if ship.ship_data else 1.0)
-		var ship_len = 300.0 * (ship.ship_data.model_scale if ship.ship_data else 1.0)
-		var pairs = hardpoints / 2
-		
 		for i in range(hardpoints):
 			var weapon = Weapon.new()
 			var wdata = WeaponData.new()
@@ -108,17 +104,7 @@ func _ensure_weapon() -> void:
 			wdata.capacitor_usage = cap_usage
 			wdata.projectile_scene = null
 			weapon.weapon_data = wdata
-			# 左右交替布置
-			var side = 1 if i % 2 == 0 else -1
-			var pair_idx = int(i / 2.0)
-			var z_offset = -ship_len * 0.4 + (pair_idx / maxf(pairs - 1, 1)) * ship_len * 0.6 if pairs > 0 else 0.0
-			var offset = Vector3(ship_half_w * side, 0, z_offset)
-			weapon.position = offset
-			weapon.name = "NPCLaser_%s_%d" % ["Left" if side > 0 else "Right", pair_idx]
-			weapon.mount_local_normal = Vector3(side, 0, 0)
-			weapon.activate()
-			ship.call_deferred("add_child", weapon)
-			ship.weapon_nodes.append(weapon)
+			ship.call_deferred("_install_turret_weapon", weapon, i, hardpoints, "NPCLaser")
 
 func _setup_auto_patrol() -> void:
 	if not owner_ship or patrol_points.size() > 0:

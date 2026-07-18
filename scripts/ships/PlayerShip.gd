@@ -380,9 +380,6 @@ func _get_missile_stats() -> Dictionary:
 ## 创建激光武器，沿飞船左右对称分布
 func _create_laser_weapons(count: int) -> void:
 	var stats = _get_laser_stats()
-	var ship_len = 300.0 * (ship_data.model_scale if ship_data else 1.0)
-	var ship_half_w = 75.0 * (ship_data.model_scale if ship_data else 1.0)
-	var pairs = count / 2
 	for i in range(count):
 		var weapon = Weapon.new()
 		var wdata = WeaponData.new()
@@ -396,26 +393,12 @@ func _create_laser_weapons(count: int) -> void:
 		wdata.capacitor_usage = stats["cap"]
 		wdata.projectile_scene = null
 		weapon.weapon_data = wdata
-		# 左右交替布置：i=0左, i=1右, i=2左, i=3右...
-		var side = 1 if i % 2 == 0 else -1
-		var pair_idx = int(i / 2.0)  # 第几对
-		# 从船头到船尾均匀分布Z位置
-		var z_offset = -ship_len * 0.4 + (pair_idx / maxf(pairs - 1, 1)) * ship_len * 0.6 if pairs > 0 else 0.0
-		var offset = Vector3(ship_half_w * side, 0, z_offset)
-		weapon.position = offset
-		weapon.name = "LaserWeapon_%s_%d" % ["Left" if side > 0 else "Right", pair_idx]
-		weapon.mount_local_normal = Vector3(side, 0, 0)
-		add_child(weapon)
-		weapon_nodes.append(weapon)
-		weapon.activate()
+		_install_turret_weapon(weapon, i, count, "LaserWeapon")
 
 ## 创建导弹武器，沿飞船左右对称分布
 func _create_missile_weapons(count: int) -> void:
 	var stats = _get_missile_stats()
 	var projectile_scene = preload("res://scenes/weapons/Missile.tscn")
-	var ship_len = 300.0 * (ship_data.model_scale if ship_data else 1.0)
-	var ship_half_w = 75.0 * (ship_data.model_scale if ship_data else 1.0)
-	var pairs = count / 2
 	for i in range(count):
 		var weapon = Weapon.new()
 		var wdata = WeaponData.new()
@@ -433,18 +416,8 @@ func _create_missile_weapons(count: int) -> void:
 		wdata.projectile_scene = projectile_scene
 		wdata.projectile_scale = stats["proj_scale"]
 		weapon.weapon_data = wdata
-		# 左右交替布置
-		var side = 1 if i % 2 == 0 else -1
-		var pair_idx = int(i / 2.0)
-		# 导弹布置在船体后方
-		var z_offset = ship_len * 0.3 + (pair_idx / maxf(pairs - 1, 1)) * ship_len * 0.2 if pairs > 0 else 0.0
-		var offset = Vector3(ship_half_w * side, 0, z_offset)
-		weapon.position = offset
-		weapon.name = "MissileLauncher_%s_%d" % ["Left" if side > 0 else "Right", pair_idx]
-		weapon.mount_local_normal = Vector3(side, 0, 0)
-		add_child(weapon)
-		weapon_nodes.append(weapon)
-		weapon.activate()
+		# 导弹布置在船体后方（z_start=0.3, z_end=0.5）
+		_install_turret_weapon(weapon, i, count, "MissileLauncher", 0.3, 0.5)
 
 ## 根据船型获取维修装备参数
 func _get_repair_module_stats() -> Dictionary:
