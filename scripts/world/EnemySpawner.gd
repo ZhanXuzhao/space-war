@@ -14,9 +14,9 @@ signal enemy_spawned(enemy: Ship)
 
 ## 飞船场景映射（共用场景，敌我同模）
 const NPC_SHIP_SCENES := {
-	ShipData.ShipClass.FRIGATE: preload("res://scenes/player/Frigate.tscn"),
-	ShipData.ShipClass.CRUISER: preload("res://scenes/player/Cruiser.tscn"),
-	ShipData.ShipClass.BATTLESHIP: preload("res://scenes/player/Battleship.tscn"),
+	ShipData.ShipClass.FRIGATE: preload("res://scenes/ships/Frigate.tscn"),
+	ShipData.ShipClass.CRUISER: preload("res://scenes/ships/Cruiser.tscn"),
+	ShipData.ShipClass.BATTLESHIP: preload("res://scenes/ships/Battleship.tscn"),
 }
 
 # 船型分布权重（总和不必为1）

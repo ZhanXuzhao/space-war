@@ -95,9 +95,9 @@ func get_cargo_used() -> int:
 
 ## 飞船场景路径映射（ShipClass → 场景文件路径）
 const PLAYER_SHIP_SCENES := {
-	ShipData.ShipClass.FRIGATE: "res://scenes/player/Frigate.tscn",
-	ShipData.ShipClass.CRUISER: "res://scenes/player/Cruiser.tscn",
-	ShipData.ShipClass.BATTLESHIP: "res://scenes/player/Battleship.tscn",
+	ShipData.ShipClass.FRIGATE: "res://scenes/ships/Frigate.tscn",
+	ShipData.ShipClass.CRUISER: "res://scenes/ships/Cruiser.tscn",
+	ShipData.ShipClass.BATTLESHIP: "res://scenes/ships/Battleship.tscn",
 }
 
 ## 根据船型获取玩家飞船场景
