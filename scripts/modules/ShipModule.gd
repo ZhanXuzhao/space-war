@@ -66,6 +66,12 @@ func _finish_cycle() -> void:
 	is_on_cooldown = true
 	cooldown_timer = 0.5
 
+## 获取当前读条进度 (0~1)，用于 UI 显示
+func get_cycle_progress() -> float:
+	if is_active and module_data and module_data.activation_time > 0:
+		return 1.0 - (cycle_timer / module_data.activation_time)
+	return 0.0
+
 ## 应用模块效果 - 子类重写
 func _apply_effect() -> void:
 	pass

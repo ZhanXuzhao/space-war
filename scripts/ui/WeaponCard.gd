@@ -125,8 +125,12 @@ func _update_cooldown() -> void:
 			pct = (w.cooldown_timer / 3.0) * 100.0
 	elif is_module and bound_node is ShipModule:
 		var m = bound_node as ShipModule
-		on_cooldown = m.is_on_cooldown
-		if on_cooldown and m.module_data:
+		if m.is_active and m.cycle_timer > 0 and m.module_data:
+			# 读条中：显示循环进度
+			on_cooldown = true
+			pct = (1.0 - m.cycle_timer / m.module_data.activation_time) * 100.0
+		elif m.is_on_cooldown and m.module_data:
+			on_cooldown = true
 			pct = (m.cooldown_timer / m.module_data.activation_time) * 100.0
 	
 	if on_cooldown:
@@ -153,9 +157,17 @@ func _update_status() -> void:
 	elif is_weapon and (bound_node as Weapon).is_on_cooldown:
 		status_label.text = "冷却中"
 		status_label.add_theme_color_override("font_color", Color(1, 0.8, 0.2))
-	elif is_module and (bound_node as ShipModule).is_on_cooldown:
-		status_label.text = "循环中"
-		status_label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
+	elif is_module and bound_node is ShipModule:
+		var m = bound_node as ShipModule
+		if m.is_active and m.cycle_timer > 0:
+			status_label.text = "维修中..."
+			status_label.add_theme_color_override("font_color", Color(0.3, 0.8, 1, 1))
+		elif m.is_on_cooldown:
+			status_label.text = "循环中"
+			status_label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
+		else:
+			status_label.text = "就绪"
+			status_label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
 	else:
 		status_label.text = "就绪"
 		status_label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))

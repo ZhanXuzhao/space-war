@@ -293,22 +293,22 @@ func _get_repair_module_stats() -> Dictionary:
 			return {
 				"prefix": "轻型",
 				"shield": { "amount": 120.0, "cap": 30.0, "time": 3.0 },
-				"armor":  { "amount": 80.0,  "cap": 35.0, "time": 4.0 },
-				"structure": { "amount": 60.0, "cap": 40.0, "time": 5.0 },
+				"armor":  { "amount": 80.0,  "cap": 35.0, "time": 3.0 },
+				"structure": { "amount": 60.0, "cap": 40.0, "time": 3.0 },
 			}
 		ShipData.ShipClass.CRUISER:
 			return {
 				"prefix": "中型",
-				"shield": { "amount": 300.0, "cap": 60.0, "time": 3.5 },
-				"armor":  { "amount": 200.0, "cap": 70.0, "time": 4.5 },
-				"structure": { "amount": 150.0, "cap": 80.0, "time": 5.5 },
+				"shield": { "amount": 300.0, "cap": 60.0, "time": 3.0 },
+				"armor":  { "amount": 200.0, "cap": 70.0, "time": 3.0 },
+				"structure": { "amount": 150.0, "cap": 80.0, "time": 3.0 },
 			}
 		ShipData.ShipClass.BATTLESHIP:
 			return {
 				"prefix": "重型",
-				"shield": { "amount": 600.0, "cap": 120.0, "time": 4.0 },
-				"armor":  { "amount": 400.0, "cap": 140.0, "time": 5.0 },
-				"structure": { "amount": 300.0, "cap": 160.0, "time": 6.0 },
+				"shield": { "amount": 600.0, "cap": 120.0, "time": 3.0 },
+				"armor":  { "amount": 400.0, "cap": 140.0, "time": 3.0 },
+				"structure": { "amount": 300.0, "cap": 160.0, "time": 3.0 },
 			}
 	return {}
 
