@@ -57,7 +57,7 @@ static func create_frigate() -> ShipData:
 	d.ship_class = ShipClass.FRIGATE
 	d.ship_name = "秃鹫级"
 	d.description = "灵活的轻型护卫舰，适合侦察和骚扰任务"
-	d.model_scale = 1.0
+	d.model_scale = 0.33
 	d.hull_hp = 800.0
 	d.armor_hp = 600.0
 	d.shield_hp = 800.0
@@ -84,7 +84,7 @@ static func create_cruiser() -> ShipData:
 	d.ship_class = ShipClass.CRUISER
 	d.ship_name = "风暴级"
 	d.description = "多功能巡洋舰，火力与防御兼备"
-	d.model_scale = 5.0
+	d.model_scale = 1.67
 	d.hull_hp = 4000.0
 	d.armor_hp = 3000.0
 	d.shield_hp = 4000.0
@@ -111,7 +111,7 @@ static func create_battleship() -> ShipData:
 	d.ship_class = ShipClass.BATTLESHIP
 	d.ship_name = "末日级"
 	d.description = "重型战列舰，拥有毁灭性的火力和坚不可摧的装甲"
-	d.model_scale = 10.0
+	d.model_scale = 3.33
 	d.hull_hp = 12000.0
 	d.armor_hp = 10000.0
 	d.shield_hp = 8000.0
