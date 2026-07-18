@@ -157,7 +157,7 @@ func _handle_movement(delta: float) -> void:
 		var target_speed = velocity_setpoint.length()
 		if target_speed > 0.01 and is_alive:
 			var target_dir = velocity_setpoint / target_speed
-			var target_basis = Basis.looking_at(target_dir, Vector3.UP)
+			var target_basis = Basis.looking_at(target_dir, Vector3.UP).orthonormalized()
 			global_basis = global_basis.slerp(target_basis, rotation_speed * delta)
 			current_speed = move_toward(current_speed, target_speed, acceleration * delta)
 		else:
@@ -679,3 +679,30 @@ func _input(event: InputEvent) -> void:
 			_cam_distance = minf(camera_max_distance, _cam_distance + zoom_step)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			_cam_distance = maxf(camera_min_distance, _cam_distance - zoom_step)
+	
+	# -= 键 - 调整游戏速度（timescale）
+	const TIMESCALE_STEPS: Array[float] = [0.0, 0.1, 0.5, 1.0, 2.0, 3.0, 5.0]
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:
+			var cur = Engine.time_scale
+			var idx = TIMESCALE_STEPS.find(cur)
+			if idx < 0:
+				# 当前值不在预设中，找最近的下一档
+				for i in range(TIMESCALE_STEPS.size()):
+					if TIMESCALE_STEPS[i] > cur:
+						idx = i - 1
+						break
+			idx = clampi(idx + 1, 0, TIMESCALE_STEPS.size() - 1)
+			Engine.time_scale = TIMESCALE_STEPS[idx]
+			add_message("游戏速度: x%.1f" % Engine.time_scale, Color(0.3, 0.8, 1))
+		elif event.keycode == KEY_MINUS or event.keycode == KEY_KP_SUBTRACT:
+			var cur = Engine.time_scale
+			var idx = TIMESCALE_STEPS.find(cur)
+			if idx < 0:
+				for i in range(TIMESCALE_STEPS.size() - 1, -1, -1):
+					if TIMESCALE_STEPS[i] < cur:
+						idx = i + 1
+						break
+			idx = clampi(idx - 1, 0, TIMESCALE_STEPS.size() - 1)
+			Engine.time_scale = TIMESCALE_STEPS[idx]
+			add_message("游戏速度: x%.1f" % Engine.time_scale, Color(0.3, 0.8, 1))

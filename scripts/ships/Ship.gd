@@ -80,6 +80,9 @@ func _ready() -> void:
 	_init_stats()
 	_setup_velocity_arrow()
 	_setup_nose_color()
+	# 修复：将 CollisionShape3D 从 ModelGroup 移到 Ship 的直接子级，
+	# 避免嵌套缩放导致物理引擎射线检测失效
+	_fix_collision_shape_parent()
 
 ## 随机飞船名字池（按船型，由 ShipData.SHIP_CLASS_NAMES_POOL 管理）
 ## 公开接口：根据船型获取随机名字（供 EnemySpawner 等外部调用）
@@ -226,6 +229,30 @@ func _update_velocity_arrow() -> void:
 	_velocity_arrow.scale.y = 0.3 + speed_ratio * 0.7
 	_velocity_arrow.visible = speed_ratio > 0.01
 
+## 将 CollisionShape3D 从 ModelGroup 移到 Ship 的直接子级
+## 解决嵌套缩放导致物理引擎射线检测不到碰撞体的问题
+func _fix_collision_shape_parent() -> void:
+	var old_cs = find_child("CollisionShape3D", true, false)
+	if not old_cs or not old_cs is CollisionShape3D:
+		return
+	# 如果已经在直接子级，不需要处理
+	if old_cs.get_parent() == self:
+		return
+	var shape_res = old_cs.shape
+	if not shape_res:
+		return
+	# 创建新的 CollisionShape3D 挂在 Ship 直接子级
+	var new_cs = CollisionShape3D.new()
+	new_cs.shape = shape_res
+	# 计算相对 Ship 的局部变换
+	var local_xform = old_cs.global_transform * global_transform.affine_inverse()
+	new_cs.transform = local_xform
+	new_cs.disabled = old_cs.disabled
+	add_child(new_cs)
+	# 禁用旧的碰撞体
+	old_cs.disabled = true
+	print("[Ship] 已迁移 CollisionShape3D 到直接子级: ", name)
+
 ## 设置船头圆球颜色（按阵营，圆球本身在场景中定义）
 func _setup_nose_color() -> void:
 	_nose_sphere = get_node_or_null("NoseSphere") as MeshInstance3D
@@ -265,8 +292,8 @@ func _handle_movement(delta: float) -> void:
 		var target_speed = velocity_setpoint.length()
 		if target_speed > 0.01:
 			var target_dir = velocity_setpoint / target_speed
-			var target_basis = Basis.looking_at(target_dir, Vector3.UP)
-			global_basis = global_basis.slerp(target_basis, rotation_speed * delta)
+			var target_basis = Basis.looking_at(target_dir, Vector3.UP).orthonormalized()
+			global_basis = global_basis.orthonormalized().slerp(target_basis, rotation_speed * delta)
 			current_speed = move_toward(current_speed, target_speed, acceleration * delta)
 		else:
 			current_speed = move_toward(current_speed, 0.0, deceleration * delta)
@@ -276,8 +303,8 @@ func _handle_movement(delta: float) -> void:
 		var distance = global_position.distance_to(move_target)
 		
 		# 飞船朝向目标方向旋转（平滑旋转）
-		var target_basis = Basis.looking_at(direction, Vector3.UP)
-		global_basis = global_basis.slerp(target_basis, rotation_speed * delta)
+		var target_basis = Basis.looking_at(direction, Vector3.UP).orthonormalized()
+		global_basis = global_basis.orthonormalized().slerp(target_basis, rotation_speed * delta)
 		
 		# 接近目标时减速
 		var speed_factor = 1.0
