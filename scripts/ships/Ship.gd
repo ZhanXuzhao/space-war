@@ -155,34 +155,13 @@ func _apply_ship_data() -> void:
 	_apply_model_scale()
 
 ## 根据 ship_data.model_scale 缩放飞船模型
+## 场景中所有需要被缩放的视觉/物理节点应放在 ModelGroup 子节点下
 func _apply_model_scale() -> void:
 	if not ship_data:
 		return
-	var scale_factor = ship_data.model_scale
-	
-	# 缩放整个飞船根节点（统一缩放所有子节点）
-	# 注意：直接缩放根节点会影响所有子节点，包括 GLB 实例
-	# 但根节点的缩放不会丢失旋转信息，比单独缩放每个 MeshInstance3D 更安全
-	# 缩放 GLB 模型实例节点（在原有变换基础上叠加 model_scale 缩放）
-	var glb_node_names := ["battleship", "plane"]
-	for child in get_children():
-		if child.name in glb_node_names:
-			# 直接乘以缩放系数，保持原有旋转和原始缩放比例
-			child.transform.basis = child.transform.basis * scale_factor
-		else:
-			var mi = child as MeshInstance3D
-			if mi and mi.name != "EngineGlow":
-				# 只缩放占位用的 MeshInstance3D（盒子、球体等）
-				mi.scale = Vector3.ONE * scale_factor
-	
-	# 缩放碰撞形状（先 duplicate 确保每个飞船实例独立，不污染场景共享资源）
-	var cs = get_node_or_null("CollisionShape3D") as CollisionShape3D
-	if cs and cs.shape is BoxShape3D:
-		var box = cs.shape.duplicate() as BoxShape3D
-		box.size = box.size * scale_factor
-		cs.shape = box
-
-	# NoseSphere 已缩放，不需要再处理网格尺寸
+	var model_group = get_node_or_null("ModelGroup") as Node3D
+	if model_group:
+		model_group.scale = Vector3.ONE * ship_data.model_scale
 
 static var _frigate_index: int = 0
 static var _cruiser_index: int = 0
