@@ -63,7 +63,7 @@ func _ready() -> void:
 
 ## 动态创建/获取玩家专用节点（Camera3D、InteractionController、ModuleManager）
 func _setup_player_nodes() -> void:
-	_camera = $Camera3D as Camera3D
+	_camera = get_node_or_null("Camera3D") as Camera3D
 	if not _camera:
 		_camera = Camera3D.new()
 		_camera.name = "Camera3D"
@@ -77,14 +77,14 @@ func _setup_player_nodes() -> void:
 	_cam_distance = camera_default_distance
 	_camera_look_at_pos = global_position
 	
-	module_manager = $ModuleManager
+	module_manager = get_node_or_null("ModuleManager")
 	if not module_manager:
 		module_manager = Node.new()
 		module_manager.name = "ModuleManager"
 		module_manager.set_script(preload("res://scripts/modules/ModuleManager.gd"))
 		add_child(module_manager)
 	
-	if not $InteractionController:
+	if not get_node_or_null("InteractionController"):
 		var ic = Node.new()
 		ic.name = "InteractionController"
 		ic.set_script(preload("res://scripts/ui/InteractionController.gd"))

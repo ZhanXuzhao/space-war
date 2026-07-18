@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" path="res://scripts/world/StarSystem.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/world/Asteroid.tscn" id="2"]
-[ext_resource type="PackedScene" path="res://scenes/enemies/NPCShip.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/world/Station.tscn" id="4"]
 
 [node name="StarSystem" type="Node3D"]
@@ -14,5 +13,5 @@ npc_count = 0
 station_count = 0
 system_radius = 50000.0
 asteroid_scene = ExtResource("2")
-npc_scene = ExtResource("3")
+npc_scene = null
 station_scene = ExtResource("4")
