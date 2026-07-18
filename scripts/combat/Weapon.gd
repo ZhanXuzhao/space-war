@@ -361,6 +361,11 @@ func _fire_projectile(target: Ship) -> void:
 		projectile.damage_type = weapon_data.damage_type
 		projectile.owner_ship = owner_ship
 		projectile.scale_size = weapon_data.projectile_scale
+		
+		# 根据武器射程计算弹体飞行寿命，确保能飞到目标
+		# 有效射程 = optimal_range + falloff_range
+		var flight_range = weapon_data.optimal_range + weapon_data.falloff_range
+		projectile.max_lifetime = flight_range / projectile.speed
 
 ## 直接造成伤害（无弹体时）
 func _direct_damage(target: Ship) -> void:
