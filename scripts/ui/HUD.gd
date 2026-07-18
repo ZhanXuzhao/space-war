@@ -63,7 +63,8 @@ const AUTO_ATTACK_INTERVAL: float = 1.0
 var _auto_lock_enabled: bool = true
 var _auto_attack_enabled: bool = true
 
-var player_ship: PlayerShip = null
+var player_ship: Ship = null
+var _player_controller: Node = null
 var global_ref: Node
 var enemy_spawner: EnemySpawner = null
 var _target_node: Node = null  # 当前目标面板显示的节点
@@ -234,15 +235,19 @@ func _ready() -> void:
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
 	if ships.size() > 0:
-		player_ship = ships[0] as PlayerShip
+		player_ship = ships[0] as Ship
+		_player_controller = player_ship.get_node_or_null("PlayerController") if player_ship else null
 	if not player_ship:
-		player_ship = get_node_or_null("/root/SpaceWar/PlayerShip") as PlayerShip
+		player_ship = get_node_or_null("/root/SpaceWar/PlayerShip") as Ship
+		if player_ship:
+			_player_controller = player_ship.get_node_or_null("PlayerController")
 	if player_ship:
 		_connect_ship_signals()
 
 ## 当玩家飞船被动态创建或替换时调用（由 Main.gd / Global.gd 触发）
 func on_player_ship_changed(new_ship: Node3D) -> void:
-	player_ship = new_ship as PlayerShip
+	player_ship = new_ship as Ship
+	_player_controller = player_ship.get_node_or_null("PlayerController") if player_ship else null
 	if player_ship:
 		_connect_ship_signals()
 
@@ -535,7 +540,7 @@ func _classify_object(obj: Node, distance: float) -> Dictionary:
 	var result: Dictionary = { "node": obj, "distance": distance, "name": "", "type": "", "speed": 0.0 }
 	
 	# 飞船（排除玩家）
-	if obj is Ship and not obj is PlayerShip:
+	if obj is Ship and obj.faction != Ship.Faction.PLAYER:
 		if obj.ship_data and obj.ship_data.ship_name:
 			result["name"] = obj.ship_data.ship_name
 		else:
@@ -716,8 +721,9 @@ func _update_sort_indicators() -> void:
 ## Alt+点击空白区域 → 相机解锁回自身飞船
 func _on_overview_empty_click(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.alt_pressed and player_ship:
-			player_ship.clear_camera_focus()
+		if event.alt_pressed and _player_controller:
+			if _player_controller.has_method("clear_camera_focus"):
+				_player_controller.clear_camera_focus()
 
 func _on_overview_label_input(event: InputEvent, entry: Dictionary) -> void:
 	if not player_ship:
@@ -725,12 +731,14 @@ func _on_overview_label_input(event: InputEvent, entry: Dictionary) -> void:
 	
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		# Alt+左键 → 相机锁定/解锁
-		if event.alt_pressed:
+		if event.alt_pressed and _player_controller:
 			var target_node = entry.get("node")
 			if is_instance_valid(target_node) and target_node is Node3D:
-				player_ship.set_camera_focus(target_node)
+				if _player_controller.has_method("set_camera_focus"):
+					_player_controller.set_camera_focus(target_node)
 			else:
-				player_ship.clear_camera_focus()
+				if _player_controller.has_method("clear_camera_focus"):
+					_player_controller.clear_camera_focus()
 		# Ctrl+左键 → 锁定目标（仅飞船，已锁定的不再重复操作）
 		elif event.ctrl_pressed:
 			var target_node = entry.get("node")
@@ -747,7 +755,8 @@ func _on_overview_label_input(event: InputEvent, entry: Dictionary) -> void:
 func _on_overview_left_click(entry: Dictionary) -> void:
 	var target_node = entry.get("node")
 	if not target_node or not is_instance_valid(target_node):
-		player_ship.clear_camera_focus()
+		if _player_controller and _player_controller.has_method("clear_camera_focus"):
+			_player_controller.clear_camera_focus()
 		return
 	
 	# 显示目标信息（不锁定）
@@ -815,19 +824,22 @@ func _on_context_menu_action(action: String, target_node: Node) -> void:
 	match action:
 		"lock":
 			if target_node is Ship:
-				player_ship.try_lock_ship(target_node)
+				if _player_controller and _player_controller.has_method("try_lock_ship"):
+					_player_controller.try_lock_ship(target_node)
 				var name_str = target_node.ship_data.ship_name if target_node.ship_data else "未知"
 				add_message("锁定: " + name_str, Color(0.3, 0.8, 1))
 		
 		"attack":
 			if target_node is Ship:
 				# 锁定并设为攻击目标
-				player_ship.try_lock_ship(target_node)
+				if _player_controller and _player_controller.has_method("try_lock_ship"):
+					_player_controller.try_lock_ship(target_node)
 				player_ship.set_active_target(target_node)
 				var name_str = target_node.ship_data.ship_name if target_node.ship_data else "未知"
 				add_message("攻击目标: " + name_str, Color(1, 0.3, 0.3))
 				# 自动开火
-				player_ship.set_auto_fire(true)
+				if _player_controller and _player_controller.has_method("set_auto_fire"):
+					_player_controller.set_auto_fire(true)
 		
 		"approach":
 			if target_node is Node3D:
@@ -878,14 +890,16 @@ func _on_btn_orbit() -> void:
 	if not player_ship or not _target_node or not is_instance_valid(_target_node):
 		return
 	if _target_node is Node3D:
-		player_ship.order_orbit(_target_node)
+		if _player_controller and _player_controller.has_method("order_orbit"):
+			_player_controller.order_orbit(_target_node)
 		add_message("环绕: " + entry_name(_target_node), Color(0.3, 0.8, 1))
 
 func _on_btn_warp() -> void:
 	if not player_ship or not _target_node or not is_instance_valid(_target_node):
 		return
 	if _target_node is Node3D:
-		player_ship.warp_to(_target_node.global_position)
+		if _player_controller and _player_controller.has_method("warp_to"):
+			_player_controller.warp_to(_target_node.global_position)
 		add_message("跃迁: " + entry_name(_target_node), Color(0.3, 0.8, 1))
 
 func _on_btn_attack() -> void:

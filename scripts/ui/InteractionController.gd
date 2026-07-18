@@ -9,7 +9,8 @@ enum ClickMode { SELECT, MOVE, ATTACK, MINE }
 signal target_info_requested(node: Node3D)
 
 var current_mode: ClickMode = ClickMode.SELECT
-var player_ship: PlayerShip = null
+var player_ship: Ship = null
+var _player_controller: Node = null
 
 var _right_click_press_pos: Vector2 = Vector2.ZERO
 var _right_click_pressed: bool = false
@@ -21,9 +22,12 @@ func _ready() -> void:
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
 	if ships.size() > 0:
-		player_ship = ships[0] as PlayerShip
+		player_ship = ships[0] as Ship
+		_player_controller = player_ship.get_node_or_null("PlayerController") if player_ship else null
 	if not player_ship:
-		player_ship = get_node_or_null("/root/SpaceWar/PlayerShip") as PlayerShip
+		player_ship = get_node_or_null("/root/SpaceWar/PlayerShip") as Ship
+		if player_ship:
+			_player_controller = player_ship.get_node_or_null("PlayerController")
 
 func _input(event: InputEvent) -> void:
 	if not player_ship:
@@ -54,7 +58,8 @@ func _handle_right_click(_event: InputEventMouseButton) -> void:
 		# 点击飞船 - 锁定/攻击
 		if collider is Ship and collider != player_ship:
 			if collider.faction == Ship.Faction.NPC_HOSTILE:
-				player_ship.try_lock_ship(collider)
+				if _player_controller and _player_controller.has_method("try_lock_ship"):
+					_player_controller.try_lock_ship(collider)
 			else:
 				player_ship.order_move_to(result.position)
 		# 点击小行星 - 采矿/接近
@@ -94,13 +99,16 @@ func _handle_left_click(event: InputEventMouseButton) -> void:
 		if result:
 			var collider = result.collider
 			if collider is Node3D:
-				player_ship.set_camera_focus(collider)
+				if _player_controller and _player_controller.has_method("set_camera_focus"):
+					_player_controller.set_camera_focus(collider)
 				target_info_requested.emit(collider)
 			else:
-				player_ship.clear_camera_focus()
+				if _player_controller and _player_controller.has_method("clear_camera_focus"):
+					_player_controller.clear_camera_focus()
 				target_info_requested.emit(null)
 		else:
-			player_ship.clear_camera_focus()
+			if _player_controller and _player_controller.has_method("clear_camera_focus"):
+				_player_controller.clear_camera_focus()
 			target_info_requested.emit(null)
 		return
 	

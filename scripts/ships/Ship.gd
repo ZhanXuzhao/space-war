@@ -34,7 +34,7 @@ var current_capacitor: float
 var current_speed: float = 0.0
 var is_alive: bool = true
 
-## 移动控制（由 PlayerShip 或 AI 驱动）
+## 移动控制（由 PlayerController 或 AIController 驱动）
 var has_move_order: bool = false
 var move_target: Vector3 = Vector3.ZERO
 
@@ -84,6 +84,7 @@ func _ready() -> void:
 		return
 	_initialized = true
 	_init_stats()
+	_create_default_equipment()
 	_setup_velocity_arrow()
 	_setup_nose_color()
 
@@ -166,6 +167,178 @@ func _apply_model_scale() -> void:
 	if not ship_data:
 		return
 	scale = Vector3.ONE * ship_data.model_scale
+
+## 根据船型和阵营创建默认装备（武器 + 维修模块）
+## 敌我双方共用，创建逻辑由 ship_data 和 faction 决定
+func _create_default_equipment() -> void:
+	if not ship_data:
+		return
+	
+	var hardpoints = ship_data.turret_hardpoints
+	if hardpoints <= 0:
+		return
+	
+	# 玩家阵营：激光 + 导弹混装 + 维修模块
+	if faction == Faction.PLAYER:
+		var laser_count = int(hardpoints / 2.0)
+		var missile_count = int(hardpoints / 2.0)
+		_create_laser_weapons(laser_count)
+		_create_missile_weapons(missile_count)
+		_create_repair_modules()
+	# NPC：纯激光武器
+	else:
+		_create_npc_weapons(hardpoints)
+
+## 根据船型获取激光武器参数
+func _get_laser_stats() -> Dictionary:
+	var cls = ship_data.ship_class if ship_data else ShipData.ShipClass.FRIGATE
+	match cls:
+		ShipData.ShipClass.FRIGATE:
+			return { "name": "小型激光炮", "damage": 25.0, "rof": 3.0, "optimal": 5000.0, "falloff": 10000.0, "tracking": 1.0, "cap": 5.0 }
+		ShipData.ShipClass.CRUISER:
+			return { "name": "中型激光炮", "damage": 55.0, "rof": 4.0, "optimal": 10000.0, "falloff": 15000.0, "tracking": 0.8, "cap": 12.0 }
+		ShipData.ShipClass.BATTLESHIP:
+			return { "name": "大型激光炮", "damage": 120.0, "rof": 5.0, "optimal": 20000.0, "falloff": 25000.0, "tracking": 0.5, "cap": 25.0 }
+	return {}
+
+## 根据船型获取导弹武器参数
+func _get_missile_stats() -> Dictionary:
+	var cls = ship_data.ship_class if ship_data else ShipData.ShipClass.FRIGATE
+	match cls:
+		ShipData.ShipClass.FRIGATE:
+			return { "name": "轻型导弹发射器", "damage": 60.0, "rof": 6.0, "optimal": 5000.0, "falloff": 8000.0, "tracking": 0.5, "sig": 40.0, "cap": 15.0, "proj_scale": 0.6 }
+		ShipData.ShipClass.CRUISER:
+			return { "name": "中型导弹发射器", "damage": 140.0, "rof": 8.0, "optimal": 10000.0, "falloff": 15000.0, "tracking": 0.4, "sig": 80.0, "cap": 30.0, "proj_scale": 1.0 }
+		ShipData.ShipClass.BATTLESHIP:
+			return { "name": "重型导弹发射器", "damage": 300.0, "rof": 10.0, "optimal": 20000.0, "falloff": 30000.0, "tracking": 0.3, "sig": 150.0, "cap": 50.0, "proj_scale": 1.8 }
+	return {}
+
+## 根据船型获取NPC武器参数
+func _get_npc_weapon_stats() -> Dictionary:
+	var cls = ship_data.ship_class if ship_data else ShipData.ShipClass.FRIGATE
+	match cls:
+		ShipData.ShipClass.FRIGATE:
+			return { "name": "小型NPC激光炮", "damage": 15.0, "rof": 3.0, "optimal": 5000.0, "falloff": 10000.0, "tracking": 1.0, "cap": 2.0 }
+		ShipData.ShipClass.CRUISER:
+			return { "name": "中型NPC激光炮", "damage": 40.0, "rof": 4.0, "optimal": 10000.0, "falloff": 15000.0, "tracking": 0.8, "cap": 6.0 }
+		ShipData.ShipClass.BATTLESHIP:
+			return { "name": "大型NPC激光炮", "damage": 80.0, "rof": 5.0, "optimal": 20000.0, "falloff": 25000.0, "tracking": 0.5, "cap": 12.0 }
+	return {}
+
+## 创建NPC激光武器
+func _create_npc_weapons(count: int) -> void:
+	var stats = _get_npc_weapon_stats()
+	for i in range(count):
+		var weapon = Weapon.new()
+		var wdata = WeaponData.new()
+		wdata.weapon_name = stats["name"]
+		wdata.damage = stats["damage"]
+		wdata.damage_type = "热能"
+		wdata.rate_of_fire = 1.0 / stats["rof"]
+		wdata.optimal_range = stats["optimal"]
+		wdata.falloff_range = stats["falloff"]
+		wdata.tracking_speed = stats["tracking"]
+		wdata.capacitor_usage = stats["cap"]
+		wdata.projectile_scene = null
+		weapon.weapon_data = wdata
+		_install_turret_weapon(weapon, i, count, "NPCLaser")
+
+## 创建激光武器，沿飞船左右对称分布
+func _create_laser_weapons(count: int) -> void:
+	var stats = _get_laser_stats()
+	for i in range(count):
+		var weapon = Weapon.new()
+		var wdata = WeaponData.new()
+		wdata.weapon_name = stats["name"]
+		wdata.damage = stats["damage"]
+		wdata.damage_type = "热能"
+		wdata.rate_of_fire = 1.0 / stats["rof"]
+		wdata.optimal_range = stats["optimal"]
+		wdata.falloff_range = stats["falloff"]
+		wdata.tracking_speed = stats["tracking"]
+		wdata.capacitor_usage = stats["cap"]
+		wdata.projectile_scene = null
+		weapon.weapon_data = wdata
+		_install_turret_weapon(weapon, i, count, "LaserWeapon")
+
+## 创建导弹武器，沿飞船左右对称分布
+func _create_missile_weapons(count: int) -> void:
+	var stats = _get_missile_stats()
+	var projectile_scene = preload("res://scenes/weapons/Missile.tscn")
+	for i in range(count):
+		var weapon = Weapon.new()
+		var wdata = WeaponData.new()
+		wdata.weapon_name = stats["name"]
+		wdata.description = stats["name"] + "，自动追踪导弹"
+		wdata.weapon_type = WeaponData.WeaponType.MISSILE
+		wdata.damage = stats["damage"]
+		wdata.damage_type = "爆炸"
+		wdata.rate_of_fire = 1.0 / stats["rof"]
+		wdata.optimal_range = stats["optimal"]
+		wdata.falloff_range = stats["falloff"]
+		wdata.tracking_speed = stats["tracking"]
+		wdata.signature_resolution = stats["sig"]
+		wdata.capacitor_usage = stats["cap"]
+		wdata.projectile_scene = projectile_scene
+		wdata.projectile_scale = stats["proj_scale"]
+		weapon.weapon_data = wdata
+		_install_turret_weapon(weapon, i, count, "MissileLauncher", 0.3, 0.5)
+
+## 根据船型获取维修装备参数
+func _get_repair_module_stats() -> Dictionary:
+	var cls = ship_data.ship_class if ship_data else ShipData.ShipClass.FRIGATE
+	match cls:
+		ShipData.ShipClass.FRIGATE:
+			return {
+				"prefix": "轻型",
+				"shield": { "amount": 120.0, "cap": 30.0, "time": 3.0 },
+				"armor":  { "amount": 80.0,  "cap": 35.0, "time": 4.0 },
+				"structure": { "amount": 60.0, "cap": 40.0, "time": 5.0 },
+			}
+		ShipData.ShipClass.CRUISER:
+			return {
+				"prefix": "中型",
+				"shield": { "amount": 300.0, "cap": 60.0, "time": 3.5 },
+				"armor":  { "amount": 200.0, "cap": 70.0, "time": 4.5 },
+				"structure": { "amount": 150.0, "cap": 80.0, "time": 5.5 },
+			}
+		ShipData.ShipClass.BATTLESHIP:
+			return {
+				"prefix": "重型",
+				"shield": { "amount": 600.0, "cap": 120.0, "time": 4.0 },
+				"armor":  { "amount": 400.0, "cap": 140.0, "time": 5.0 },
+				"structure": { "amount": 300.0, "cap": 160.0, "time": 6.0 },
+			}
+	return {}
+
+## 创建3个维修装备：护盾维修、装甲维修、结构维修（按船型分大中小）
+func _create_repair_modules() -> void:
+	var stats = _get_repair_module_stats()
+	var prefix = stats.get("prefix", "轻型")
+	var modules_info = [
+		{ "cls": ShieldBooster,    "key": "shield",    "name": prefix + "护盾维修器" },
+		{ "cls": ArmorRepairer,    "key": "armor",     "name": prefix + "装甲维修器" },
+		{ "cls": StructureRepairer, "key": "structure", "name": prefix + "结构维修器" },
+	]
+	for info in modules_info:
+		var s = stats[info["key"]]
+		var mod: ShipModule = info["cls"].new()
+		var mdata = ModuleData.new()
+		mdata.module_name = info["name"]
+		mdata.effect_amount = s["amount"]
+		mdata.capacitor_usage = s["cap"]
+		mdata.activation_time = s["time"]
+		mdata.slot_type = ModuleData.ModuleSlot.LOW
+		mod.module_data = mdata
+		mod.name = info["name"]
+		add_child(mod)
+		low_slot_modules.append(mod)
+
+## 射击所有武器
+func fire_weapons(target: Ship, delta: float) -> void:
+	for weapon in weapon_nodes:
+		if weapon is Weapon:
+			weapon.try_fire(target, delta)
 
 ## 在指定炮台硬点位置安装武器（敌我共用）
 ## 自动计算左右交替位置，沿船身前后分布
@@ -282,12 +455,9 @@ func _setup_nose_color() -> void:
 			mat.albedo_color = Color(0.8, 0.8, 0.8)
 			mat.emission = Color(0.8, 0.8, 0.8)
 
-func _physics_process(delta: float) -> void:
-	if not is_alive:
-		return
-	_handle_movement(delta)
-
-## 基础移动逻辑（所有飞船共用，PlayerShip 可覆写增强）
+## 基础移动逻辑（所有飞船共用）
+## 由 PlayerController._physics_process / AIController._physics_process 调用
+## 控制器通过 order_move_to/order_set_velocity 间接控制
 func _handle_movement(delta: float) -> void:
 	if has_velocity_order:
 		# 速度指令模式：面向速度方向并加速到目标速度
@@ -470,7 +640,7 @@ func _update_approach(_delta: float) -> void:
 		# 距离足够宽裕，继续靠近
 	move_target = approach_target.global_position
 
-## 移动到目标位置（基类实现，PlayerShip 可覆写）
+## 移动到目标位置（由 PlayerController/AIController 调用）
 func order_move_to(position: Vector3) -> void:
 	approach_target = null
 	move_target = position

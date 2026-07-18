@@ -111,10 +111,23 @@ func spawn_player_ship() -> Node3D:
 	var ship = scene.instantiate()
 	# 预设置船型数据（在 _ready 前生效）
 	ship.ship_data = player_ship_data_resource
-	# 将脚本替换为 PlayerShip.gd（增加玩家专用功能：摄像机、交互控制、模块管理）
-	ship.set_script(preload("res://scripts/ships/PlayerShip.gd"))
-	# 添加到玩家组
-	ship.add_to_group("player_ship")
+	# 设置阵营为玩家
+	ship.faction = Ship.Faction.PLAYER
+	# 挂载玩家控制器（处理相机、输入、跃迁等玩家特有逻辑）
+	var controller = preload("res://scripts/controllers/PlayerController.gd").new()
+	ship.add_child(controller)
+	# 挂载交互控制器（处理鼠标点击交互）
+	if not ship.get_node_or_null("InteractionController"):
+		var ic = Node.new()
+		ic.name = "InteractionController"
+		ic.set_script(preload("res://scripts/ui/InteractionController.gd"))
+		ship.add_child(ic)
+	# 挂载模块管理器
+	if not ship.get_node_or_null("ModuleManager"):
+		var mm = Node.new()
+		mm.name = "ModuleManager"
+		mm.set_script(preload("res://scripts/modules/ModuleManager.gd"))
+		ship.add_child(mm)
 	return ship
 
 ## 更换玩家飞船类型（带场景切换）

@@ -27,8 +27,7 @@ func _ready() -> void:
 		current_state = AIState.PATROL
 		# 根据船型调整AI战斗参数
 		_adjust_for_ship_class()
-		# 如果没有武器，自动创建基础武器
-		_ensure_weapon()
+		# 武器由 Ship._create_default_equipment() 自动创建
 	
 	# 查找玩家
 	await get_tree().process_frame
@@ -57,54 +56,6 @@ func _adjust_for_ship_class() -> void:
 			engagement_range = 20000.0  # 大型武器射程
 			orbit_range = 16000.0
 			flee_shield_percent = 15.0
-
-func _ensure_weapon() -> void:
-	# 如果 owner_ship 没有任何武器节点，根据炮台硬点数量创建武器
-	if owner_ship.weapon_nodes.is_empty():
-		var ship = owner_ship
-		var hardpoints = ship.ship_data.turret_hardpoints if ship.ship_data else 4
-		
-		# 根据船型调整武器参数（小/中/大型，射程5/10/20km）
-		var base_damage = 15.0
-		var base_optimal = 5000.0
-		var base_falloff = 10000.0
-		var weapon_name = "小型NPC激光炮"
-		var rof = 3.0
-		var tracking = 1.0
-		var cap_usage = 2.0
-		if ship.ship_data:
-			match ship.ship_data.ship_class:
-				ShipData.ShipClass.CRUISER:
-					base_damage = 40.0
-					base_optimal = 10000.0
-					base_falloff = 15000.0
-					weapon_name = "中型NPC激光炮"
-					rof = 4.0
-					tracking = 0.8
-					cap_usage = 6.0
-				ShipData.ShipClass.BATTLESHIP:
-					base_damage = 80.0
-					base_optimal = 20000.0
-					base_falloff = 25000.0
-					weapon_name = "大型NPC激光炮"
-					rof = 5.0
-					tracking = 0.5
-					cap_usage = 12.0
-		
-		for i in range(hardpoints):
-			var weapon = Weapon.new()
-			var wdata = WeaponData.new()
-			wdata.weapon_name = weapon_name
-			wdata.damage = base_damage
-			wdata.damage_type = "热能"
-			wdata.rate_of_fire = 1.0 / rof
-			wdata.optimal_range = base_optimal
-			wdata.falloff_range = base_falloff
-			wdata.tracking_speed = tracking
-			wdata.capacitor_usage = cap_usage
-			wdata.projectile_scene = null
-			weapon.weapon_data = wdata
-			ship.call_deferred("_install_turret_weapon", weapon, i, hardpoints, "NPCLaser")
 
 func _setup_auto_patrol() -> void:
 	if not owner_ship or patrol_points.size() > 0:
@@ -138,6 +89,11 @@ func _process(delta: float) -> void:
 			_process_engage(delta)
 		AIState.FLEE:
 			_process_flee(delta)
+
+func _physics_process(delta: float) -> void:
+	if not owner_ship or not owner_ship.is_alive:
+		return
+	owner_ship._handle_movement(delta)
 
 ## 空闲状态
 func _process_idle(_delta: float) -> void:

@@ -36,7 +36,7 @@ func _build_ship_menu(ship: Ship) -> void:
 	add_icon_item(preload("res://icon.svg"), "锁定目标", 1)
 	
 	# 是否是玩家自身？跳过
-	if ship is PlayerShip:
+	if ship.faction == Ship.Faction.PLAYER:
 		return
 	
 	# 敌对目标显示攻击选项
