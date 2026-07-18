@@ -38,9 +38,9 @@ var _camera: Camera3D
 var _cam_distance: float = 900.0  # 默认 camera_default_distance
 var _cam_azimuth: float = 0.0      # 水平角度（度）
 var _cam_elevation: float = 15.0   # 俯仰角度（度）
-var _right_click_pressed: bool = false
-var _right_click_drag_start: Vector2 = Vector2.ZERO
-var is_right_click_drag: bool = false
+var _left_click_pressed: bool = false
+var _left_click_drag_start: Vector2 = Vector2.ZERO
+var is_left_click_drag: bool = false
 
 func _ready() -> void:
 	# 从全局单例获取玩家飞船数据，确保 Ship._init_stats() 使用正确船型（战列舰）
@@ -653,21 +653,21 @@ func _input(event: InputEvent) -> void:
 		_cam_distance = camera_default_distance
 		add_message("相机复位", Color(0.3, 0.8, 1))
 	
-	# 右键拖拽 - 旋转视角（点击不执行任何操作）
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+	# 左键拖拽 - 旋转视角（纯点击由 InteractionController 处理选择）
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			_right_click_pressed = true
-			_right_click_drag_start = get_viewport().get_mouse_position()
-			is_right_click_drag = false
+			_left_click_pressed = true
+			_left_click_drag_start = get_viewport().get_mouse_position()
+			is_left_click_drag = false
 		else:
-			_right_click_pressed = false
+			_left_click_pressed = false
 	
-	if event is InputEventMouseMotion and _right_click_pressed:
-		if not is_right_click_drag:
-			var drag_dist = _right_click_drag_start.distance_to(get_viewport().get_mouse_position())
+	if event is InputEventMouseMotion and _left_click_pressed:
+		if not is_left_click_drag:
+			var drag_dist = _left_click_drag_start.distance_to(get_viewport().get_mouse_position())
 			if drag_dist > 5.0:
-				is_right_click_drag = true
-		if is_right_click_drag:
+				is_left_click_drag = true
+		if is_left_click_drag:
 			_cam_azimuth -= event.relative.x * camera_orbit_speed * rad_to_deg(1.0)
 			_cam_elevation += event.relative.y * camera_orbit_speed * rad_to_deg(1.0)
 			_cam_elevation = clampf(_cam_elevation, -89.0, 89.0)
