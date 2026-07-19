@@ -30,7 +30,7 @@ func _process(delta: float) -> void:
 	if mining_timer >= 1.0:  # 每秒开采一次
 		mining_timer = 0.0
 		if owner_ship.use_capacitor(capacitor_usage):
-			var mined = current_target.mine(mining_power)
+			var mined = await current_target.mine(mining_power)
 			if mined > 0:
 				var ore_value = current_target.ore_type
 				# 添加到货舱 - 通过Autoload访问
