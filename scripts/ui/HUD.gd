@@ -72,8 +72,7 @@ var _target_node: Node = null  # 当前目标面板显示的节点
 ## 总览更新
 var overview_update_timer: float = 0.0
 const OVERVIEW_UPDATE_INTERVAL: float = 1.0  # 每秒更新一次
-const OVERVIEW_MAX_ENTRIES: int = 20
-const OVERVIEW_MAX_RANGE: float = 100000.0  # 最大探测范围
+const OVERVIEW_MAX_RANGE: float = 2000000.0  # 最大探测范围 2000km
 
 ## 排序状态
 enum SortColumn { NAME, DISTANCE, SPEED, TYPE }
@@ -518,10 +517,6 @@ func _update_overview() -> void:
 	
 	# 按当前排序列和方向排序
 	_sort_entries(entries)
-	
-	# 限制显示数量
-	if entries.size() > OVERVIEW_MAX_ENTRIES:
-		entries.resize(OVERVIEW_MAX_ENTRIES)
 	
 	# 刷新UI列表
 	_refresh_overview_list(entries)

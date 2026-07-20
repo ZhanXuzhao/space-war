@@ -112,9 +112,9 @@ static func create_battleship() -> ShipData:
 	d.ship_name = "末日级"
 	d.description = "重型战列舰，拥有毁灭性的火力和坚不可摧的装甲"
 	d.model_scale = 3.33
-	d.hull_hp = 12000.0
-	d.armor_hp = 10000.0
-	d.shield_hp = 8000.0
+	d.hull_hp = 120000.0
+	d.armor_hp = 100000.0
+	d.shield_hp = 80000.0
 	d.capacitor_max = 3000.0
 	d.capacitor_recharge_rate = 60.0
 	d.max_speed = 200.0

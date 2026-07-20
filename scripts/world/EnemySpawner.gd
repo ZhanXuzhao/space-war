@@ -8,7 +8,6 @@ signal enemy_spawned(enemy: Ship)
 
 @export var spawn_distance_min: float = 5000.0  # 最小生成距离（距玩家）
 @export var spawn_distance_max: float = 10000.0 # 最大生成距离（距玩家）
-@export var max_enemies: int = 8               # 最大同时存在敌人数
 @export var wave_size: int = 1                 # 每波召唤数量
 @export var enable_warp_effect: bool = true     # 是否启用跃迁入场效果
 
@@ -75,8 +74,6 @@ func _try_spawn_enemy() -> void:
 
 ## 生成指定船型的敌舰
 func _try_spawn_class(ship_class: ShipData.ShipClass) -> void:
-	if current_enemies.size() >= max_enemies:
-		return
 	if not player_ship or not is_instance_valid(player_ship):
 		return
 	
@@ -157,26 +154,13 @@ func _start_warp_effect(pos: Vector3, ship_class: ShipData.ShipClass = ShipData.
 	tween.parallel().tween_property(warp_marker.mesh, "material:albedo_color:a", 0.0, 0.8)
 	tween.tween_callback(warp_marker.queue_free)
 
-## 手动召唤一波敌人（由按钮触发）
+## 手动召唤一波敌人（由按钮触发，无数量上限）
 func spawn_wave(count: int = -1) -> void:
 	if count < 0:
 		count = wave_size
-	# 计算剩余容量
-	var available = max_enemies - _count_alive()
-	var actual_count = mini(count, available)
-	if actual_count <= 0:
-		print("EnemySpawner: 已达最大敌舰数，无法召唤")
-		return
-	print("EnemySpawner: 召唤一波敌舰 x", actual_count)
-	for i in range(actual_count):
+	print("EnemySpawner: 召唤一波敌舰 x", count)
+	for i in range(count):
 		_try_spawn_enemy()
-
-func _count_alive() -> int:
-	var alive = 0
-	for e in current_enemies:
-		if is_instance_valid(e) and e.is_alive:
-			alive += 1
-	return alive
 
 ## 清理所有敌人
 func clear_all_enemies() -> void:
