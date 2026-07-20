@@ -77,6 +77,8 @@ var _nose_sphere: MeshInstance3D
 
 ## 战术网格图（XZ平面同心圆 + 十字线）
 var _tactical_grid: MeshInstance3D
+## 敌方飞船到战术网格面的垂线
+var _drop_lines: MeshInstance3D
 ## 战术网格半径列表（单位：米）
 const TACTICAL_GRID_RADII: Array[float] = [5000.0, 10000.0, 20000.0, 30000.0, 40000.0, 50000.0, 75000.0, 100000.0, 150000.0, 200000.0]
 ## 半径数字标签列表（用于每帧更新固定屏幕大小）
@@ -430,6 +432,8 @@ func _process(delta: float) -> void:
 	_update_velocity_arrow()
 	_update_approach(delta)
 	_update_range_labels()
+	if faction == Faction.PLAYER:
+		_update_drop_lines()
 
 ## 更新速度箭头：速度越快箭头越长
 func _update_velocity_arrow() -> void:
@@ -557,6 +561,52 @@ func _setup_tactical_grid() -> void:
 			label.scale = Vector3.ONE * scale_inv
 			add_child(label)
 			_range_labels.append(label)
+	
+	# 创建敌方飞船到网格面的垂线网格实例
+	_drop_lines = MeshInstance3D.new()
+	_drop_lines.name = "DropLines"
+	add_child(_drop_lines)
+	# 半透明白色材质（稍细更亮，以便与十字线区分）
+	var drop_mat = StandardMaterial3D.new()
+	drop_mat.albedo_color = Color(1.0, 1.0, 1.0, 0.4)
+	drop_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	drop_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_drop_lines.material_override = drop_mat
+
+## 更新敌方飞船到战术网格面（XZ平面）的垂线
+## 每条线从飞船位置垂直投影到网格面，帮助判断敌机在平面上的方位
+func _update_drop_lines() -> void:
+	if not _drop_lines or not is_inside_tree():
+		return
+	if not _tactical_grid or not _tactical_grid.visible:
+		_drop_lines.visible = false
+		return
+	_drop_lines.visible = true
+	
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_LINES)
+	
+	var root = get_tree().current_scene
+	if not root:
+		return
+	
+	_append_drop_lines_recursive(root, st)
+	
+	var mesh = st.commit()
+	_drop_lines.mesh = mesh
+
+## 递归扫描场景树，为所有敌方飞船添加垂线
+func _append_drop_lines_recursive(node: Node, st: SurfaceTool) -> void:
+	for child in node.get_children():
+		if child is Ship and child != self and child.faction == Ship.Faction.NPC_HOSTILE and child.is_alive:
+			# 将敌方飞船的世界坐标转换到玩家本地坐标（网格在玩家本地 Y=0 平面）
+			var local_pos = to_local(child.global_position)
+			var ground_pos = Vector3(local_pos.x, 0.0, local_pos.z)
+			# 垂线：从飞船位置垂直落到网格面
+			st.add_vertex(local_pos)
+			st.add_vertex(ground_pos)
+		# 递归继续搜索子节点
+		_append_drop_lines_recursive(child, st)
 
 ## 每帧更新半径标签缩放，使其屏幕大小不随镜头距离变化
 func _update_range_labels() -> void:
