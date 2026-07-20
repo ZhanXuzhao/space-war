@@ -4,7 +4,7 @@
 		{
 			"label": "Run Game",
 			"type": "shell",
-			"command": "cd d:\\MyProjects\\space-war && godot --headless --no-window --check-only 2>&1",
+			"command": "godot --headless --no-window --check-only 2>&1",
 			"group": "none"
 		}
 	]
