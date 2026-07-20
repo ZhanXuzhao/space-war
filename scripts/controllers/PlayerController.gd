@@ -378,13 +378,12 @@ func _input(event: InputEvent) -> void:
 			_cam_elevation += event.relative.y * camera_orbit_speed * rad_to_deg(1.0)
 			_cam_elevation = clampf(_cam_elevation, -89.0, 89.0)
 	
-	# 滚轮缩放
-	var zoom_step = camera_max_distance * 0.02
+	# 滚轮缩放（每次滚动 ±当前距离的 20%）
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			_cam_distance = minf(camera_max_distance, _cam_distance + zoom_step)
+			_cam_distance = minf(camera_max_distance, _cam_distance * 1.2)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			_cam_distance = maxf(camera_min_distance, _cam_distance - zoom_step)
+			_cam_distance = maxf(camera_min_distance, _cam_distance * 0.8)
 	
 	# -= 键 - 调整游戏速度
 	const TIMESCALE_STEPS: Array[float] = [0.0, 0.1, 0.5, 1.0, 2.0, 3.0, 5.0]
