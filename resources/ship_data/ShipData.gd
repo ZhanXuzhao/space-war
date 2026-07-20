@@ -115,8 +115,8 @@ static func create_battleship() -> ShipData:
 	d.hull_hp = 120000.0
 	d.armor_hp = 100000.0
 	d.shield_hp = 80000.0
-	d.capacitor_max = 3000.0
-	d.capacitor_recharge_rate = 60.0
+	d.capacitor_max = 30000.0  # x10
+	d.capacitor_recharge_rate = 180.0  # x3
 	d.max_speed = 200.0
 	d.warp_speed = 2.0
 	d.mass = 100000000.0

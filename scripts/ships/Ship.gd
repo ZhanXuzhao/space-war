@@ -359,9 +359,9 @@ func _get_repair_module_stats() -> Dictionary:
 		ShipData.ShipClass.BATTLESHIP:
 			return {
 				"prefix": "重型",
-				"shield": { "amount": 600.0, "cap": 120.0, "time": 3.0 },
-				"armor":  { "amount": 400.0, "cap": 140.0, "time": 3.0 },
-				"structure": { "amount": 300.0, "cap": 160.0, "time": 3.0 },
+				"shield": { "amount": 6000.0, "cap": 120.0, "time": 3.0 },  # 护盾维修量x10
+				"armor":  { "amount": 4000.0, "cap": 140.0, "time": 3.0 },
+				"structure": { "amount": 3000.0, "cap": 160.0, "time": 3.0 },
 			}
 	return {}
 
