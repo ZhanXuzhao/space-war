@@ -1,18 +1,19 @@
 [gd_scene format=3 uid="uid://b7hq8rfd403wr"]
 
-[ext_resource type="Script" path="res://scripts/ui/LockedTargetCard.gd" id="1"]
+[ext_resource type="Script" uid="uid://c6eu32y7vtoh1" path="res://scripts/ui/LockedTargetCard.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://dj2hbipxsw2vk" path="res://images/icon_frigate.png" id="2_0n0n7"]
 
 [sub_resource type="StyleBoxFlat" id="card_bg"]
 bg_color = Color(0.15, 0.15, 0.2, 0.85)
-border_color = Color(0.7, 0.7, 0.7, 1)
 border_width_left = 1
-border_width_right = 1
 border_width_top = 1
+border_width_right = 1
 border_width_bottom = 1
+border_color = Color(0.7, 0.7, 0.7, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
-corner_radius_bottom_left = 4
 corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="bar_bg"]
 bg_color = Color(0.15, 0.15, 0.15, 0.5)
@@ -29,13 +30,14 @@ bg_color = Color(1, 0.4, 0.1, 0.9)
 [sub_resource type="StyleBoxFlat" id="cap_fill"]
 bg_color = Color(0.1, 0.5, 0.9, 0.9)
 
-[node name="LockedTargetCard" type="Panel"]
-script = ExtResource("1")
+[node name="LockedTargetCard" type="Panel" unique_id=1628996038]
 custom_minimum_size = Vector2(100, 160)
 size_flags_horizontal = 4
 theme_override_styles/panel = SubResource("card_bg")
+script = ExtResource("1")
 
-[node name="VBox" type="VBoxContainer" parent="."]
+[node name="VBox" type="VBoxContainer" parent="." unique_id=2020424505]
+layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 3.0
@@ -43,14 +45,16 @@ offset_top = 3.0
 offset_right = -3.0
 offset_bottom = -3.0
 
-[node name="IconRect" type="TextureRect" parent="VBox"]
+[node name="IconRect" type="TextureRect" parent="VBox" unique_id=868249285]
 custom_minimum_size = Vector2(90, 60)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+texture = ExtResource("2_0n0n7")
+expand_mode = 1
 stretch_mode = 5
 
-[node name="NameLabel" type="Label" parent="VBox"]
+[node name="NameLabel" type="Label" parent="VBox" unique_id=20391773]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.8, 0.9, 1)
 theme_override_font_sizes/font_size = 8
@@ -59,34 +63,34 @@ horizontal_alignment = 1
 autowrap_mode = 3
 max_lines_visible = 1
 
-[node name="ShieldBar" type="ProgressBar" parent="VBox"]
+[node name="ShieldBar" type="ProgressBar" parent="VBox" unique_id=1026348641]
 custom_minimum_size = Vector2(0, 5)
 layout_mode = 2
 size_flags_horizontal = 3
-show_percentage = false
 theme_override_styles/background = SubResource("bar_bg")
 theme_override_styles/fill = SubResource("shield_fill")
+show_percentage = false
 
-[node name="ArmorBar" type="ProgressBar" parent="VBox"]
+[node name="ArmorBar" type="ProgressBar" parent="VBox" unique_id=1881719900]
 custom_minimum_size = Vector2(0, 5)
 layout_mode = 2
 size_flags_horizontal = 3
-show_percentage = false
 theme_override_styles/background = SubResource("bar_bg")
 theme_override_styles/fill = SubResource("armor_fill")
+show_percentage = false
 
-[node name="HullBar" type="ProgressBar" parent="VBox"]
+[node name="HullBar" type="ProgressBar" parent="VBox" unique_id=1197030804]
 custom_minimum_size = Vector2(0, 5)
 layout_mode = 2
 size_flags_horizontal = 3
-show_percentage = false
 theme_override_styles/background = SubResource("bar_bg")
 theme_override_styles/fill = SubResource("hull_fill")
+show_percentage = false
 
-[node name="CapacitorBar" type="ProgressBar" parent="VBox"]
+[node name="CapacitorBar" type="ProgressBar" parent="VBox" unique_id=165395072]
 custom_minimum_size = Vector2(0, 5)
 layout_mode = 2
 size_flags_horizontal = 3
-show_percentage = false
 theme_override_styles/background = SubResource("bar_bg")
 theme_override_styles/fill = SubResource("cap_fill")
+show_percentage = false
