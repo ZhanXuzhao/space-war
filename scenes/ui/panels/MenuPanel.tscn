@@ -13,12 +13,16 @@ offset_right = 80.0
 grow_vertical = 2
 theme_override_styles/panel = SubResource("menubar_style")
 
-[node name="SpawnButton" type="Button" parent="."]
+[node name="ButtonList" type="VBoxContainer" parent="."]
 layout_mode = 0
 offset_left = 5.0
 offset_top = 5.0
 offset_right = 75.0
-offset_bottom = 50.0
+offset_bottom = 205.0
+theme_override_constants/separation = 5
+
+[node name="SpawnButton" type="Button" parent="ButtonList"]
+layout_mode = 2
 theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
 theme_override_colors/font_pressed_color = Color(1, 0.3, 0.3, 1)
 theme_override_colors/font_hover_color = Color(0.5, 0.8, 1, 1)
@@ -26,12 +30,17 @@ theme_override_font_sizes/font_size = 11
 text = "召唤敌舰"
 flat = true
 
-[node name="NewGameButton" type="Button" parent="."]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 55.0
-offset_right = 75.0
-offset_bottom = 100.0
+[node name="SpawnX10Button" type="Button" parent="ButtonList"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.6, 0.1, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.3, 0.3, 1)
+theme_override_colors/font_hover_color = Color(1, 0.8, 0.3, 1)
+theme_override_font_sizes/font_size = 11
+text = "召唤x10"
+flat = true
+
+[node name="NewGameButton" type="Button" parent="ButtonList"]
+layout_mode = 2
 theme_override_colors/font_color = Color(0.3, 1, 0.3, 1)
 theme_override_colors/font_pressed_color = Color(1, 0.3, 0.3, 1)
 theme_override_colors/font_hover_color = Color(0.5, 1, 0.5, 1)
@@ -39,12 +48,8 @@ theme_override_font_sizes/font_size = 11
 text = "新建游戏"
 flat = true
 
-[node name="RestartGameButton" type="Button" parent="."]
-layout_mode = 0
-offset_left = 5.0
-offset_top = 105.0
-offset_right = 75.0
-offset_bottom = 150.0
+[node name="RestartGameButton" type="Button" parent="ButtonList"]
+layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.8, 0.3, 1)
 theme_override_colors/font_pressed_color = Color(1, 0.3, 0.3, 1)
 theme_override_colors/font_hover_color = Color(1, 0.9, 0.5, 1)

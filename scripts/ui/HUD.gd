@@ -33,6 +33,7 @@ class_name HUD
 @export var message_log: VBoxContainer
 @export var context_menu: OverviewContextMenu
 @export var spawn_button: Button
+@export var spawn_x10_button: Button
 @export var new_game_button: Button
 @export var restart_game_button: Button
 @export var menu_panel: Panel
@@ -139,11 +140,13 @@ func _ready() -> void:
 		auto_attack_check.toggled.connect(_on_auto_attack_toggled)
 	# 手动查找召唤按钮、新建游戏按钮和消息日志
 	if not spawn_button:
-		spawn_button = get_node_or_null("MenuPanel/SpawnButton") as Button
+		spawn_button = get_node_or_null("MenuPanel/ButtonList/SpawnButton") as Button
+	if not spawn_x10_button:
+		spawn_x10_button = get_node_or_null("MenuPanel/ButtonList/SpawnX10Button") as Button
 	if not new_game_button:
-		new_game_button = get_node_or_null("MenuPanel/NewGameButton") as Button
+		new_game_button = get_node_or_null("MenuPanel/ButtonList/NewGameButton") as Button
 	if not restart_game_button:
-		restart_game_button = get_node_or_null("MenuPanel/RestartGameButton") as Button
+		restart_game_button = get_node_or_null("MenuPanel/ButtonList/RestartGameButton") as Button
 	if not message_log:
 		message_log = get_node_or_null("MessageLog/ScrollContainer/MessageList") as VBoxContainer
 	
@@ -222,6 +225,11 @@ func _ready() -> void:
 			enemy_spawner = get_node_or_null("/root/SpaceWar/EnemySpawner") as EnemySpawner
 	else:
 		print("HUD: spawn_button 未绑定，无法手动召唤敌人")
+	
+	# 连接召唤x10按钮
+	if spawn_x10_button:
+		spawn_x10_button.pressed.connect(_on_spawn_x10_button_pressed)
+		print("HUD: spawn_x10_button 已绑定")
 	
 	# 连接新建游戏按钮
 	if new_game_button:
@@ -1392,6 +1400,18 @@ func _on_spawn_button_pressed() -> void:
 		if enemy_spawner:
 			enemy_spawner.spawn_wave()
 			add_message("召唤一波敌舰!", Color(1, 0.3, 0.3))
+		else:
+			add_message("错误: 找不到 EnemySpawner!", Color.RED)
+
+func _on_spawn_x10_button_pressed() -> void:
+	if enemy_spawner:
+		enemy_spawner.spawn_wave(10)
+		add_message("召唤一波敌舰 x10!", Color(1, 0.6, 0.1))
+	else:
+		enemy_spawner = get_node_or_null("/root/SpaceWar/EnemySpawner") as EnemySpawner
+		if enemy_spawner:
+			enemy_spawner.spawn_wave(10)
+			add_message("召唤一波敌舰 x10!", Color(1, 0.6, 0.1))
 		else:
 			add_message("错误: 找不到 EnemySpawner!", Color.RED)
 

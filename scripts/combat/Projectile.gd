@@ -51,7 +51,8 @@ func _hit_target() -> void:
 	has_hit = true
 	
 	if target and target.is_alive:
-		target.take_damage(damage, damage_type, owner_ship)
+		var source = owner_ship if (owner_ship and is_instance_valid(owner_ship)) else null
+		target.take_damage(damage, damage_type, source)
 	
 	# 爆炸效果
 	_spawn_hit_explosion()
