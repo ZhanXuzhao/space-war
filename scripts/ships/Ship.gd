@@ -182,12 +182,13 @@ func _create_default_equipment() -> void:
 	if faction == Faction.PLAYER:
 		var laser_count = int(hardpoints / 2.0)
 		var missile_count = int(hardpoints / 2.0)
-		_create_laser_weapons(laser_count)
-		_create_missile_weapons(missile_count)
+		# 传递全局起始索引和总硬点数，确保所有炮台在 Z 轴上等距分布
+		_create_laser_weapons(laser_count, 0, hardpoints)
+		_create_missile_weapons(missile_count, laser_count, hardpoints)
 		_create_repair_modules()
 	# NPC：纯激光武器
 	else:
-		_create_npc_weapons(hardpoints)
+		_create_npc_weapons(hardpoints, 0, hardpoints)
 
 ## 根据船型获取激光武器参数
 func _get_laser_stats() -> Dictionary:
@@ -226,7 +227,7 @@ func _get_npc_weapon_stats() -> Dictionary:
 	return {}
 
 ## 创建NPC激光武器
-func _create_npc_weapons(count: int) -> void:
+func _create_npc_weapons(count: int, start_index: int, total_hardpoints: int) -> void:
 	var stats = _get_npc_weapon_stats()
 	for i in range(count):
 		var weapon = Weapon.new()
@@ -241,10 +242,10 @@ func _create_npc_weapons(count: int) -> void:
 		wdata.capacitor_usage = stats["cap"]
 		wdata.projectile_scene = null
 		weapon.weapon_data = wdata
-		_install_turret_weapon(weapon, i, count, "NPCLaser")
+		_install_turret_weapon(weapon, start_index + i, total_hardpoints, "NPCLaser")
 
 ## 创建激光武器，沿飞船左右对称分布
-func _create_laser_weapons(count: int) -> void:
+func _create_laser_weapons(count: int, start_index: int, total_hardpoints: int) -> void:
 	var stats = _get_laser_stats()
 	for i in range(count):
 		var weapon = Weapon.new()
@@ -259,10 +260,10 @@ func _create_laser_weapons(count: int) -> void:
 		wdata.capacitor_usage = stats["cap"]
 		wdata.projectile_scene = null
 		weapon.weapon_data = wdata
-		_install_turret_weapon(weapon, i, count, "LaserWeapon")
+		_install_turret_weapon(weapon, start_index + i, total_hardpoints, "LaserWeapon")
 
 ## 创建导弹武器，沿飞船左右对称分布
-func _create_missile_weapons(count: int) -> void:
+func _create_missile_weapons(count: int, start_index: int, total_hardpoints: int) -> void:
 	var stats = _get_missile_stats()
 	var projectile_scene = preload("res://scenes/weapons/Missile.tscn")
 	for i in range(count):
@@ -283,7 +284,8 @@ func _create_missile_weapons(count: int) -> void:
 		wdata.projectile_scale = stats["proj_scale"]
 		wdata.projectile_speed = stats["speed"]
 		weapon.weapon_data = wdata
-		_install_turret_weapon(weapon, i, count, "MissileLauncher", 0.3, 0.5)
+		# 导弹和激光使用相同的 Z 范围，确保所有炮台等距分布
+		_install_turret_weapon(weapon, start_index + i, total_hardpoints, "MissileLauncher")
 
 ## 根据船型获取维修装备参数
 func _get_repair_module_stats() -> Dictionary:

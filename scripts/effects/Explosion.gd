@@ -209,10 +209,10 @@ func _setup_explosion() -> void:
 	
 	_flash_light = OmniLight3D.new()
 	_flash_light.name = "FlashLight"
-	_flash_light.omni_range = radius * 8.0
+	_flash_light.omni_range = radius * 15.0
 	_flash_light.light_color = Color(faction_color.r * 0.8 + 0.2, faction_color.g * 0.5 + 0.5, faction_color.b * 0.3 + 0.3)
-	_flash_light.light_energy = 5.0
-	_flash_light.light_indirect_energy = 2.0
+	_flash_light.light_energy = 12.0
+	_flash_light.light_indirect_energy = 4.0
 	add_child(_flash_light)
 
 func _play() -> void:
@@ -259,13 +259,17 @@ func _process(delta: float) -> void:
 		else:
 			_flash_mesh.visible = false
 	
-	# 灯光衰减
+	# 灯光衰减（持续3秒，逐渐减弱消失）
 	if _flash_light:
-		var light_progress = _timer / 0.5
+		var light_progress = _timer / 3.0
 		if light_progress < 1.0:
-			_flash_light.light_energy = 5.0 * (1.0 - light_progress * 0.9)
+			# 使用平方曲线：先快后慢，模拟爆炸瞬间极亮然后缓慢衰减
+			var fade = 1.0 - light_progress
+			_flash_light.light_energy = 12.0 * fade * fade
+			_flash_light.light_indirect_energy = 4.0 * fade * fade
 		else:
 			_flash_light.light_energy = 0.0
+			_flash_light.light_indirect_energy = 0.0
 	
 	# 自动销毁
 	if _timer >= _duration * 1.5:
