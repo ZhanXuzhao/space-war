@@ -573,8 +573,8 @@ func _setup_tactical_grid() -> void:
 	drop_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_drop_lines.material_override = drop_mat
 
-## 更新敌方飞船到战术网格面（XZ平面）的垂线
-## 每条线从飞船位置垂直投影到网格面，帮助判断敌机在平面上的方位
+## 更新敌方飞船到战术网格面（XZ平面）的弧线
+## 以我方为圆心、敌我距离为半径，在敌我所在的垂直平面内画弧，从敌方位置落到 XZ 网格面
 func _update_drop_lines() -> void:
 	if not _drop_lines or not is_inside_tree():
 		return
@@ -595,18 +595,62 @@ func _update_drop_lines() -> void:
 	var mesh = st.commit()
 	_drop_lines.mesh = mesh
 
-## 递归扫描场景树，为所有敌方飞船添加垂线
+## 递归扫描场景树，为所有敌方飞船添加圆弧
 func _append_drop_lines_recursive(node: Node, st: SurfaceTool) -> void:
 	for child in node.get_children():
 		if child is Ship and child != self and child.faction == Ship.Faction.NPC_HOSTILE and child.is_alive:
-			# 将敌方飞船的世界坐标转换到玩家本地坐标（网格在玩家本地 Y=0 平面）
-			var local_pos = to_local(child.global_position)
-			var ground_pos = Vector3(local_pos.x, 0.0, local_pos.z)
-			# 垂线：从飞船位置垂直落到网格面
-			st.add_vertex(local_pos)
-			st.add_vertex(ground_pos)
+			_draw_drop_arc(st, child)
 		# 递归继续搜索子节点
 		_append_drop_lines_recursive(child, st)
+
+## 为单艘敌船绘制圆弧
+## 圆心 = 玩家原点，半径 = 敌我距离，
+## 平面 = 敌我所在的垂直平面，从敌船位置落到 XZ 网格面（y=0）
+func _draw_drop_arc(st: SurfaceTool, enemy: Ship) -> void:
+	var local_pos = to_local(enemy.global_position)
+	var r = local_pos.length()
+	if r < 1.0:
+		return
+	
+	# 水平方向单位向量（从玩家指向敌船在地面的投影点）
+	var h_dir = Vector3(local_pos.x, 0.0, local_pos.z)
+	var h_dist = h_dir.length()
+	if h_dist < 0.001:
+		# 敌船几乎在正上方/正下方 → 水平方向任意取一个
+		h_dir = Vector3.FORWARD
+		h_dist = 0.0
+	else:
+		h_dir = h_dir / h_dist
+	
+	# 敌船与水平面的夹角（仰角）
+	var theta = atan2(local_pos.y, h_dist)  # 范围 (-PI/2, PI/2)
+	
+	# 从 theta 到 0 的圆弧段数
+	var segments = 24
+	var step = theta / segments
+	
+	for i in range(segments):
+		var a1 = theta - step * i
+		var a2 = theta - step * (i + 1)
+		
+		# 圆弧上的点 = 水平分量 + 垂直分量
+		var p1 = r * cos(a1) * h_dir + Vector3(0.0, r * sin(a1), 0.0)
+		var p2 = r * cos(a2) * h_dir + Vector3(0.0, r * sin(a2), 0.0)
+		
+		st.add_vertex(p1)
+		st.add_vertex(p2)
+	
+	# 在弧线末端（XZ 网格面）画一个小圆圈
+	var center = r * h_dir
+	var circle_radius = 50  # 不超过 150 单位
+	var circle_segments = 16
+	for i in range(circle_segments):
+		var a1 = (2.0 * PI * i) / circle_segments
+		var a2 = (2.0 * PI * (i + 1)) / circle_segments
+		var c1 = center + Vector3(cos(a1) * circle_radius, 0.0, sin(a1) * circle_radius)
+		var c2 = center + Vector3(cos(a2) * circle_radius, 0.0, sin(a2) * circle_radius)
+		st.add_vertex(c1)
+		st.add_vertex(c2)
 
 ## 每帧更新半径标签缩放，使其屏幕大小不随镜头距离变化
 func _update_range_labels() -> void:
