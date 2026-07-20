@@ -199,9 +199,12 @@ func _create_default_equipment() -> void:
 		_create_laser_weapons(laser_count, 0, hardpoints)
 		_create_missile_weapons(missile_count, laser_count, hardpoints)
 		_create_repair_modules()
-	# NPC：纯激光武器
+	# NPC：激光 + 导弹各一半
 	else:
-		_create_npc_weapons(hardpoints, 0, hardpoints)
+		var laser_count = int(hardpoints / 2.0)
+		var missile_count = hardpoints - laser_count
+		_create_npc_weapons(laser_count, 0, hardpoints)
+		_create_npc_missile_weapons(missile_count, laser_count, hardpoints)
 
 ## 根据船型获取激光武器参数
 func _get_laser_stats() -> Dictionary:
@@ -256,6 +259,41 @@ func _create_npc_weapons(count: int, start_index: int, total_hardpoints: int) ->
 		wdata.projectile_scene = null
 		weapon.weapon_data = wdata
 		_install_turret_weapon(weapon, start_index + i, total_hardpoints, "NPCLaser")
+
+## 根据船型获取NPC导弹武器参数
+func _get_npc_missile_stats() -> Dictionary:
+	var cls = ship_data.ship_class if ship_data else ShipData.ShipClass.FRIGATE
+	match cls:
+		ShipData.ShipClass.FRIGATE:
+			return { "name": "轻型NPC导弹", "damage": 40.0, "rof": 6.0, "optimal": 5000.0, "falloff": 8000.0, "tracking": 0.5, "sig": 40.0, "cap": 8.0, "proj_scale": 0.6, "speed": 2000.0 }
+		ShipData.ShipClass.CRUISER:
+			return { "name": "中型NPC导弹", "damage": 100.0, "rof": 8.0, "optimal": 10000.0, "falloff": 15000.0, "tracking": 0.4, "sig": 80.0, "cap": 15.0, "proj_scale": 1.0, "speed": 2000.0 }
+		ShipData.ShipClass.BATTLESHIP:
+			return { "name": "重型NPC导弹", "damage": 200.0, "rof": 10.0, "optimal": 20000.0, "falloff": 30000.0, "tracking": 0.3, "sig": 150.0, "cap": 25.0, "proj_scale": 1.8, "speed": 2000.0 }
+	return {}
+
+## 创建NPC导弹武器
+func _create_npc_missile_weapons(count: int, start_index: int, total_hardpoints: int) -> void:
+	var stats = _get_npc_missile_stats()
+	var projectile_scene = preload("res://scenes/weapons/Missile.tscn")
+	for i in range(count):
+		var weapon = Weapon.new()
+		var wdata = WeaponData.new()
+		wdata.weapon_name = stats["name"]
+		wdata.weapon_type = WeaponData.WeaponType.MISSILE
+		wdata.damage = stats["damage"]
+		wdata.damage_type = "爆炸"
+		wdata.rate_of_fire = 1.0 / stats["rof"]
+		wdata.optimal_range = stats["optimal"]
+		wdata.falloff_range = stats["falloff"]
+		wdata.tracking_speed = stats["tracking"]
+		wdata.signature_resolution = stats["sig"]
+		wdata.capacitor_usage = stats["cap"]
+		wdata.projectile_scene = projectile_scene
+		wdata.projectile_scale = stats["proj_scale"]
+		wdata.projectile_speed = stats["speed"]
+		weapon.weapon_data = wdata
+		_install_turret_weapon(weapon, start_index + i, total_hardpoints, "NPCMissile")
 
 ## 创建激光武器，沿飞船左右对称分布
 func _create_laser_weapons(count: int, start_index: int, total_hardpoints: int) -> void:
