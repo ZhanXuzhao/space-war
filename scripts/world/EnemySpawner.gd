@@ -6,8 +6,8 @@ class_name EnemySpawner
 
 signal enemy_spawned(enemy: Ship)
 
-@export var spawn_distance_min: float = 5000.0  # 最小生成距离（距玩家）
-@export var spawn_distance_max: float = 10000.0 # 最大生成距离（距玩家）
+@export var spawn_distance_min: float = 10000.0  # 最小生成距离（距玩家）
+@export var spawn_distance_max: float = 30000.0 # 最大生成距离（距玩家）
 @export var wave_size: int = 1                 # 每波召唤数量
 @export var enable_warp_effect: bool = true     # 是否启用跃迁入场效果
 
@@ -19,9 +19,9 @@ const NPC_SHIP_SCENES := {
 }
 
 # 船型分布权重（总和不必为1）
-@export var frigate_weight: float = 0.5
-@export var cruiser_weight: float = 0.5
-@export var battleship_weight: float = 0.0
+@export var frigate_weight: float = 1.0
+@export var cruiser_weight: float = 1.0
+@export var battleship_weight: float = 1.0
 
 var player_ship: Ship = null
 var current_enemies: Array[Ship] = []

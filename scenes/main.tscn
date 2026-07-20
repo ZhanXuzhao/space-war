@@ -39,7 +39,4 @@ light_energy = 1.5
 script = ExtResource("4")
 spawn_interval_min = 10.0
 spawn_interval_max = 30.0
-spawn_distance_min = 3000.0
-spawn_distance_max = 10000.0
 max_enemies = 8
-enable_warp_effect = true
