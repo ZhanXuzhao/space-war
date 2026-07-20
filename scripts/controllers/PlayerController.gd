@@ -30,7 +30,7 @@ var orbit_angle: float = 0.0
 @export var camera_orbit_speed: float = 0.005
 @export var camera_zoom_speed: float = 5.0
 @export var camera_min_distance: float = 50.0
-@export var camera_max_distance: float = 50000.0
+@export var camera_max_distance: float = 200000.0
 @export var camera_default_distance: float = 900.0
 
 var _camera: Camera3D
@@ -58,6 +58,8 @@ func _ready() -> void:
 	controlled_ship.add_to_group("player_ship")
 	_setup_camera()
 	_adjust_for_ship_class()
+	# 镜头最近距离 = 船长 × 2（考虑模型缩放）
+	camera_min_distance = controlled_ship.SHIP_LENGTH * controlled_ship.scale.x * 2.0
 	_cam_distance = camera_default_distance
 	_camera_look_at_pos = controlled_ship.global_position
 
@@ -67,7 +69,7 @@ func _setup_camera() -> void:
 		_camera = Camera3D.new()
 		_camera.name = "Camera3D"
 		_camera.near = 0.5
-		_camera.far = 100000.0
+		_camera.far = 500000.0
 		_camera.current = true
 		var cam_basis = Basis(Vector3(1, 0, 0), Vector3(0, 0.949, -0.316), Vector3(0, 0.316, 0.949))
 		_camera.transform = Transform3D(cam_basis, Vector3(0, 10, 30))

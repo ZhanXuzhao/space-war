@@ -75,6 +75,15 @@ var _velocity_arrow: MeshInstance3D
 ## 船头标记圆球（在场景中定义，代码仅控制阵营颜色）
 var _nose_sphere: MeshInstance3D
 
+## 战术网格图（XZ平面同心圆 + 十字线）
+var _tactical_grid: MeshInstance3D
+## 战术网格半径列表（单位：米）
+const TACTICAL_GRID_RADII: Array[float] = [5000.0, 10000.0, 20000.0, 30000.0, 40000.0, 50000.0, 75000.0, 100000.0, 150000.0, 200000.0]
+## 半径数字标签列表（用于每帧更新固定屏幕大小）
+var _range_labels: Array[Label3D] = []
+## 半径数字的反缩放系数（用于 _process 中计算标签缩放）
+var _range_label_scale_inv: float = 1.0
+
 ## 阵营
 enum Faction { PLAYER, NPC_FRIENDLY, NPC_HOSTILE, NEUTRAL }
 @export var faction: Faction = Faction.NEUTRAL
@@ -87,6 +96,8 @@ func _ready() -> void:
 	_create_default_equipment()
 	_setup_velocity_arrow()
 	_setup_nose_color()
+	if faction == Faction.PLAYER:
+		_setup_tactical_grid()
 
 ## 随机飞船名字池（按船型，由 ShipData.SHIP_CLASS_NAMES_POOL 管理）
 ## 公开接口：根据船型获取随机名字（供 EnemySpawner 等外部调用）
@@ -418,6 +429,7 @@ func _process(delta: float) -> void:
 	_recharge_capacitor(delta)
 	_update_velocity_arrow()
 	_update_approach(delta)
+	_update_range_labels()
 
 ## 更新速度箭头：速度越快箭头越长
 func _update_velocity_arrow() -> void:
@@ -457,6 +469,108 @@ func _setup_nose_color() -> void:
 		_:  # NEUTRAL
 			mat.albedo_color = Color(0.8, 0.8, 0.8)
 			mat.emission = Color(0.8, 0.8, 0.8)
+
+## 创建战术网格图（XZ平面同心圆 + 十字线，始终跟随飞船）
+func _setup_tactical_grid() -> void:
+	# 飞船根节点有 model_scale 缩放，子节点坐标会被放大
+	# 此处用反缩放系数抵消，确保网格距离为真实世界距离
+	var scale_inv = 1.0 / maxf(scale.x, 0.01)
+	_range_label_scale_inv = scale_inv
+	
+	_tactical_grid = MeshInstance3D.new()
+	_tactical_grid.name = "TacticalGrid"
+	add_child(_tactical_grid)
+	
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_LINES)
+	
+	var grid_color = Color(1.0, 1.0, 1.0, 0.25)
+	var segments = 64
+	
+	# 绘制同心圆（XZ平面）
+	for radius in TACTICAL_GRID_RADII:
+		var r = radius * scale_inv
+		for i in range(segments):
+			var t1 = (2.0 * PI * i) / segments
+			var t2 = (2.0 * PI * (i + 1)) / segments
+			var p1 = Vector3(cos(t1) * r, 0.0, sin(t1) * r)
+			var p2 = Vector3(cos(t2) * r, 0.0, sin(t2) * r)
+			st.add_vertex(p1)
+			st.add_vertex(p2)
+	
+	# 绘制X轴直线（左右方向）
+	var max_radius = TACTICAL_GRID_RADII[TACTICAL_GRID_RADII.size() - 1] * scale_inv
+	var line_segments = 128
+	for i in range(line_segments):
+		var t = lerpf(-max_radius, max_radius, float(i) / line_segments)
+		var t_next = lerpf(-max_radius, max_radius, float(i + 1) / line_segments)
+		st.add_vertex(Vector3(t, 0.0, 0.0))
+		st.add_vertex(Vector3(t_next, 0.0, 0.0))
+	
+	# 绘制Z轴直线（前后方向）
+	for i in range(line_segments):
+		var t = lerpf(-max_radius, max_radius, float(i) / line_segments)
+		var t_next = lerpf(-max_radius, max_radius, float(i + 1) / line_segments)
+		st.add_vertex(Vector3(0.0, 0.0, t))
+		st.add_vertex(Vector3(0.0, 0.0, t_next))
+	
+	var mesh = st.commit()
+	
+	# 半透明白色材质
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = grid_color
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh.surface_set_material(0, mat)
+	
+	_tactical_grid.mesh = mesh
+	
+	# 在每道圆形内侧添加距离数字标签
+	var label_color = Color(1.0, 1.0, 1.0, 0.9)
+	for radius in TACTICAL_GRID_RADII:
+		var km = int(radius / 1000.0)
+		var sys_font = SystemFont.new()
+		sys_font.font_names = ["Arial", "Segoe UI", "Microsoft YaHei"]
+		sys_font.font_weight = 700
+		var font = FontVariation.new()
+		font.base_font = sys_font
+		var r = radius * scale_inv
+		var y = 15.0 * scale_inv
+		var dirs = [
+			Vector3( r, y, 0.0),  # X+
+			Vector3(-r, y, 0.0),  # X-
+			Vector3(0.0, y,  r),  # Z+
+			Vector3(0.0, y, -r),  # Z-
+		]
+		for pos in dirs:
+			var label = Label3D.new()
+			label.name = "RangeLabel_%d_%d_%d" % [km, int(pos.x), int(pos.z)]
+			label.text = "%dkm" % km
+			label.font = font
+			label.font_size = 300000
+			label.outline_size = 8
+			label.outline_modulate = Color(0.0, 0.0, 0.0, 0.9)
+			label.modulate = label_color
+			label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			label.no_depth_test = true
+			label.position = pos
+			label.scale = Vector3.ONE * scale_inv
+			add_child(label)
+			_range_labels.append(label)
+
+## 每帧更新半径标签缩放，使其屏幕大小不随镜头距离变化
+func _update_range_labels() -> void:
+	if _range_labels.is_empty():
+		return
+	var camera = get_viewport().get_camera_3d()
+	if not camera:
+		return
+	var cam_dist = global_position.distance_to(camera.global_position)
+	# 以 80000 为参考距离，标签在此距离时 scale = scale_inv（即世界 scale = 1）
+	var ref_dist = 80000.0
+	var dist_ratio = cam_dist / ref_dist
+	for label in _range_labels:
+		label.scale = Vector3.ONE * _range_label_scale_inv * dist_ratio
 
 ## 基础移动逻辑（所有飞船共用）
 ## 由 PlayerController._physics_process / AIController._physics_process 调用
