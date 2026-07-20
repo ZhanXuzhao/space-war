@@ -296,6 +296,18 @@ func set_camera_focus(target: Node3D) -> void:
 	_camera_look_at_pos = _get_camera_look_at_pos()
 	camera_focus_target = target
 	if target:
+		# 如果目标是飞船且正在攻击某个目标，将镜头方向设为攻击目标位置+(0.5,0,0)*武器射程所在方向
+		if target is Ship and target.is_alive:
+			var ship_target = target as Ship
+			if ship_target.active_target and is_instance_valid(ship_target.active_target) and ship_target.active_target.is_alive:
+				var offset_pos = ship_target.active_target.global_position + Vector3(ship_target.current_targeting_range * 0.3, 0, 0)
+				var attack_dir = offset_pos - target.global_position
+				if attack_dir.length_squared() > 0.01:
+					attack_dir = attack_dir.normalized()
+					# 镜头朝向偏移后的攻击目标方向：将相机置于飞船相对于该位置的背后
+					var cam_dir = -attack_dir
+					_cam_azimuth = rad_to_deg(atan2(cam_dir.x, cam_dir.z))
+					_cam_elevation = rad_to_deg(asin(clampf(cam_dir.y, -1.0, 1.0)))
 		add_message("相机锁定: " + target.name, Color(0.3, 0.8, 1))
 	else:
 		add_message("相机解锁", Color(0.7, 0.7, 0.7))

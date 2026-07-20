@@ -720,8 +720,16 @@ func _handle_movement(delta: float) -> void:
 			current_speed = move_toward(current_speed, 0.0, deceleration * delta)
 		velocity = -global_basis.z * current_speed
 	elif has_move_order:
-		var direction = (move_target - global_position).normalized()
-		var distance = global_position.distance_to(move_target)
+		var direction = move_target - global_position
+		var distance = direction.length()
+		
+		# 保护：目标方向为零向量时跳过旋转
+		if distance < 0.001:
+			current_speed = move_toward(current_speed, 0.0, deceleration * delta)
+			velocity = -global_basis.z * current_speed
+			move_and_slide()
+			return
+		direction = direction / distance
 		
 		# 飞船朝向目标方向旋转（平滑旋转）
 		var target_basis = Basis.looking_at(direction, Vector3.UP).orthonormalized()
