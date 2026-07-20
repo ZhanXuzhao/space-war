@@ -109,9 +109,9 @@ func _ready() -> void:
 	btn_approach = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/BtnApproach") as Button
 	btn_orbit = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/BtnOrbit") as Button
 	btn_warp = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/BtnWarp") as Button
-	btn_attack = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/BtnAttack") as Button
-	btn_lock = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/LockBtnHBox/BtnLock") as Button
-	btn_unlock = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/LockBtnHBox/BtnUnlock") as Button
+	btn_attack = get_node_or_null("TargetPanel/VBoxContainer/LockBtnHBox/BtnAttack") as Button
+	btn_lock = get_node_or_null("TargetPanel/VBoxContainer/LockBtnHBox/BtnLock") as Button
+	btn_unlock = get_node_or_null("TargetPanel/VBoxContainer/LockBtnHBox/BtnUnlock") as Button
 	target_image = get_node_or_null("TargetPanel/VBoxContainer/HBoxContainer/TargetImage") as TextureRect
 	locked_panel = get_node_or_null("LockedPanel") as Control
 	locked_list = get_node_or_null("LockedPanel/ScrollContainer/LockedList") as HBoxContainer
@@ -848,6 +848,21 @@ func _show_target_info(node: Node) -> void:
 	
 	if target_name_label:
 		target_name_label.text = name_str
+	
+	# 更新目标船型图标
+	if target_image:
+		if node is Ship:
+			var cls = node.ship_data.ship_class if node.ship_data else ShipData.ShipClass.FRIGATE
+			var icon = SHIP_ICONS.get(cls)
+			if icon:
+				target_image.texture = icon
+				target_image.show()
+			else:
+				target_image.texture = null
+				target_image.hide()
+		else:
+			target_image.texture = null
+			target_image.hide()
 	
 	_update_lock_button_visibility()
 
