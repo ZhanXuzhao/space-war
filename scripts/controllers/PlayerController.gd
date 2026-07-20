@@ -25,6 +25,8 @@ var warp_charging: bool = false
 var orbit_target: Node3D = null
 var orbit_range: float = 1200.0
 var orbit_angle: float = 0.0
+## 环绕当前速度（每帧以 a·Δt 向目标加速）
+var _orbit_current_velocity: Vector3 = Vector3.ZERO
 
 # ---------------------------------------------------------------------------
 # 相机系统 — 参数
@@ -198,7 +200,14 @@ func _update_orbit(delta: float) -> void:
 		vertical_dir * vertical_speed
 	)
 	
-	controlled_ship.order_set_velocity(final_velocity)
+	# v = v₀ + a·Δt：向目标速度加速，不超过飞船加速度
+	var delta_v = final_velocity - _orbit_current_velocity
+	var max_delta = controlled_ship.acceleration * delta
+	if delta_v.length() > max_delta:
+		delta_v = delta_v.normalized() * max_delta
+	_orbit_current_velocity += delta_v
+	
+	controlled_ship.order_set_velocity(_orbit_current_velocity)
 
 ## 命令飞船环绕目标飞行
 func order_orbit(target: Node3D, range: float = 1200.0) -> void:
@@ -212,6 +221,7 @@ func order_orbit(target: Node3D, range: float = 1200.0) -> void:
 	orbit_target = target
 	orbit_range = range
 	orbit_angle = 0.0
+	_orbit_current_velocity = Vector3.ZERO
 	
 	add_message("开始环绕: " + target.name, Color(0.3, 0.8, 1))
 
@@ -222,6 +232,7 @@ func cancel_orbit() -> void:
 			orbit_target.hide_orbit_trajectory()
 			_trajectory_shown_target = null
 	orbit_target = null
+	_orbit_current_velocity = Vector3.ZERO
 	controlled_ship.has_velocity_order = false
 
 ## 刷新环绕轨迹
