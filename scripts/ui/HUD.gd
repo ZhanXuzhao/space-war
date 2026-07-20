@@ -28,6 +28,7 @@ class_name HUD
 @export var armor_text_label: Label
 @export var hull_text_label: Label
 @export var cargo_label: Label
+@export var fps_label: Label
 @export var auto_lock_check: CheckBox
 @export var auto_attack_check: CheckBox
 @export var message_log: VBoxContainer
@@ -138,6 +139,10 @@ func _ready() -> void:
 		auto_lock_check.toggled.connect(_on_auto_lock_toggled)
 	if auto_attack_check:
 		auto_attack_check.toggled.connect(_on_auto_attack_toggled)
+	# 手动查找帧率标签
+	if not fps_label:
+		fps_label = get_node_or_null("FPSLabel") as Label
+	
 	# 手动查找召唤按钮、新建游戏按钮和消息日志
 	if not spawn_button:
 		spawn_button = get_node_or_null("MenuPanel/ButtonList/SpawnButton") as Button
@@ -329,6 +334,10 @@ func _process(delta: float) -> void:
 	if player_ship and is_inside_tree():
 		_update_speed()
 		_update_target_distance()
+	
+	# 更新帧率显示
+	if fps_label:
+		fps_label.text = "FPS: %d" % Performance.get_monitor(Performance.TIME_FPS)
 	
 	# 定时更新总览
 	overview_update_timer += delta
