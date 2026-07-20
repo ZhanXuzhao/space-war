@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://targetpanel"]
 
 [ext_resource type="Script" uid="uid://764p6ct4bpp3" path="res://scripts/ui/DraggablePanel.gd" id="1_draggable"]
+[ext_resource type="Texture2D" uid="uid://cnfkfc83axw38" path="res://images/icon_battleship.png" id="2_oa80n"]
 
 [sub_resource type="StyleBoxFlat" id="overview_bg"]
 bg_color = Color(1, 1, 1, 0.15)
@@ -89,24 +90,30 @@ offset_top = 32.0
 offset_right = -5.0
 offset_bottom = -5.0
 
-[node name="TargetType" type="Label" parent="VBoxContainer" unique_id=1417666888]
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=1919586179]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/HBoxContainer" unique_id=1464835724]
+layout_mode = 2
+
+[node name="TargetType" type="Label" parent="VBoxContainer/HBoxContainer/VBoxContainer" unique_id=1417666888]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.5, 0.2, 1)
 theme_override_font_sizes/font_size = 10
 text = "敌对"
 
-[node name="TargetName" type="Label" parent="VBoxContainer" unique_id=578992946]
+[node name="TargetName" type="Label" parent="VBoxContainer/HBoxContainer/VBoxContainer" unique_id=578992946]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
 text = "目标: 无"
 
-[node name="TargetDistLabel" type="Label" parent="VBoxContainer" unique_id=1720689371]
+[node name="TargetDistLabel" type="Label" parent="VBoxContainer/HBoxContainer/VBoxContainer" unique_id=1720689371]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.6, 0.7, 1)
 theme_override_font_sizes/font_size = 10
 text = "距离: --"
 
-[node name="TargetShieldBar" type="ProgressBar" parent="VBoxContainer" unique_id=798115436]
+[node name="TargetShieldBar" type="ProgressBar" parent="VBoxContainer/HBoxContainer/VBoxContainer" unique_id=798115436]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/background = SubResource("bg_style")
@@ -114,7 +121,7 @@ theme_override_styles/fill = SubResource("shield_fill")
 value = 100.0
 show_percentage = false
 
-[node name="TargetArmorBar" type="ProgressBar" parent="VBoxContainer" unique_id=2099777184]
+[node name="TargetArmorBar" type="ProgressBar" parent="VBoxContainer/HBoxContainer/VBoxContainer" unique_id=2099777184]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/background = SubResource("bg_style")
@@ -122,13 +129,21 @@ theme_override_styles/fill = SubResource("armor_fill")
 value = 100.0
 show_percentage = false
 
-[node name="TargetHullBar" type="ProgressBar" parent="VBoxContainer" unique_id=1722419774]
+[node name="TargetHullBar" type="ProgressBar" parent="VBoxContainer/HBoxContainer/VBoxContainer" unique_id=1722419774]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/background = SubResource("bg_style")
 theme_override_styles/fill = SubResource("hull_fill")
 value = 100.0
 show_percentage = false
+
+[node name="TargetImage" type="TextureRect" parent="VBoxContainer/HBoxContainer" unique_id=1889650135]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+texture = ExtResource("2_oa80n")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="ActionBtnHBox" type="HBoxContainer" parent="VBoxContainer" unique_id=845044620]
 layout_mode = 2
@@ -176,7 +191,7 @@ theme_override_colors/font_hover_color = Color(1, 0.7, 0.5, 1)
 theme_override_font_sizes/font_size = 11
 text = "🔓 解除锁定"
 
-[node name="BtnAttack" type="Button" parent="VBoxContainer" unique_id=2035441270]
+[node name="BtnAttack" type="Button" parent="VBoxContainer/LockBtnHBox" unique_id=2035441270]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 0.3, 0.2, 1)

@@ -40,6 +40,14 @@ class_name HUD
 @export var menu_panel: Panel
 @export var btn_lock: Button
 @export var btn_unlock: Button
+@export var target_image: TextureRect
+
+## 船型图标映射
+const SHIP_ICONS := {
+	ShipData.ShipClass.FRIGATE: preload("res://images/icon_frigate.png"),
+	ShipData.ShipClass.CRUISER: preload("res://images/icon_cruiser.png"),
+	ShipData.ShipClass.BATTLESHIP: preload("res://images/icon_battleship.png"),
+}
 @export var locked_panel: Control
 @export var locked_list: HBoxContainer
 
@@ -92,18 +100,19 @@ func _ready() -> void:
 	# 手动查找节点（场景 NodePath 绑定有时不生效）
 	overview_list = get_node_or_null("OverviewPanel/ScrollContainer/OverviewList") as VBoxContainer
 	target_info_panel = get_node_or_null("TargetPanel") as Control
-	target_name_label = get_node_or_null("TargetPanel/VBoxContainer/TargetName") as Label
-	target_type_label = get_node_or_null("TargetPanel/VBoxContainer/TargetType") as Label
-	target_dist_label = get_node_or_null("TargetPanel/VBoxContainer/TargetDistLabel") as Label
-	target_shield_bar = get_node_or_null("TargetPanel/VBoxContainer/TargetShieldBar") as ProgressBar
-	target_armor_bar = get_node_or_null("TargetPanel/VBoxContainer/TargetArmorBar") as ProgressBar
-	target_hull_bar = get_node_or_null("TargetPanel/VBoxContainer/TargetHullBar") as ProgressBar
+	target_name_label = get_node_or_null("TargetPanel/VBoxContainer/HBoxContainer/VBoxContainer/TargetName") as Label
+	target_type_label = get_node_or_null("TargetPanel/VBoxContainer/HBoxContainer/VBoxContainer/TargetType") as Label
+	target_dist_label = get_node_or_null("TargetPanel/VBoxContainer/HBoxContainer/VBoxContainer/TargetDistLabel") as Label
+	target_shield_bar = get_node_or_null("TargetPanel/VBoxContainer/HBoxContainer/VBoxContainer/TargetShieldBar") as ProgressBar
+	target_armor_bar = get_node_or_null("TargetPanel/VBoxContainer/HBoxContainer/VBoxContainer/TargetArmorBar") as ProgressBar
+	target_hull_bar = get_node_or_null("TargetPanel/VBoxContainer/HBoxContainer/VBoxContainer/TargetHullBar") as ProgressBar
 	btn_approach = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/BtnApproach") as Button
 	btn_orbit = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/BtnOrbit") as Button
 	btn_warp = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/BtnWarp") as Button
-	btn_attack = get_node_or_null("TargetPanel/VBoxContainer/BtnAttack") as Button
-	btn_lock = get_node_or_null("TargetPanel/VBoxContainer/LockBtnHBox/BtnLock") as Button
-	btn_unlock = get_node_or_null("TargetPanel/VBoxContainer/LockBtnHBox/BtnUnlock") as Button
+	btn_attack = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/BtnAttack") as Button
+	btn_lock = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/LockBtnHBox/BtnLock") as Button
+	btn_unlock = get_node_or_null("TargetPanel/VBoxContainer/ActionBtnHBox/LockBtnHBox/BtnUnlock") as Button
+	target_image = get_node_or_null("TargetPanel/VBoxContainer/HBoxContainer/TargetImage") as TextureRect
 	locked_panel = get_node_or_null("LockedPanel") as Control
 	locked_list = get_node_or_null("LockedPanel/ScrollContainer/LockedList") as HBoxContainer
 	# 手动查找装备面板
@@ -443,6 +452,17 @@ func _on_target_locked(target: Ship) -> void:
 			_:
 				target_type_label.text = "中立"
 				target_type_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	
+	# 更新目标船型图标
+	if target_image:
+		var cls = target.ship_data.ship_class if target.ship_data else ShipData.ShipClass.FRIGATE
+		var icon = SHIP_ICONS.get(cls)
+		if icon:
+			target_image.texture = icon
+			target_image.show()
+		else:
+			target_image.texture = null
+			target_image.hide()
 	
 	# 先断开可能残留的旧连接，再重新连接（防止 repeat connect 错误）
 	if target.shield_changed.is_connected(_update_target_shield):

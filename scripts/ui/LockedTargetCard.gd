@@ -7,6 +7,13 @@ signal card_clicked(target: Ship)
 
 var bound_target: Ship = null
 
+## 船型图标映射
+const SHIP_ICONS := {
+	ShipData.ShipClass.FRIGATE: preload("res://images/icon_frigate.png"),
+	ShipData.ShipClass.CRUISER: preload("res://images/icon_cruiser.png"),
+	ShipData.ShipClass.BATTLESHIP: preload("res://images/icon_battleship.png"),
+}
+
 @onready var icon_rect: TextureRect = $VBox/IconRect
 @onready var name_label: Label = $VBox/NameLabel
 @onready var shield_bar: ProgressBar = $VBox/ShieldBar
@@ -31,10 +38,10 @@ func setup(target: Ship) -> void:
 	bound_target = target
 	
 	if icon_rect:
-		icon_rect.modulate = _get_ship_color(target)
-		var placeholder = PlaceholderTexture2D.new()
-		placeholder.size = Vector2(64, 64)
-		icon_rect.texture = placeholder
+		icon_rect.modulate = Color.WHITE
+		var cls = target.ship_data.ship_class if target.ship_data else ShipData.ShipClass.FRIGATE
+		var icon = SHIP_ICONS.get(cls)
+		icon_rect.texture = icon
 	
 	if name_label:
 		name_label.text = target.ship_data.ship_name if target.ship_data else "未知"
