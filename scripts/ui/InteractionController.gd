@@ -114,7 +114,7 @@ func _handle_left_click(event: InputEventMouseButton) -> void:
 	var query = PhysicsRayQueryParameters3D.create(origin, ray_end)
 	var result = space_state.intersect_ray(query)
 	
-	# Alt+左键 → 显示目标信息面板 + 相机锁定
+	# Alt+左键 → 显示目标信息面板 + 相机锁定（点击虚空不执行操作）
 	if event.alt_pressed:
 		if result:
 			var collider = result.collider
@@ -126,10 +126,7 @@ func _handle_left_click(event: InputEventMouseButton) -> void:
 				if _player_controller and _player_controller.has_method("clear_camera_focus"):
 					_player_controller.clear_camera_focus()
 				target_info_requested.emit(null)
-		else:
-			if _player_controller and _player_controller.has_method("clear_camera_focus"):
-				_player_controller.clear_camera_focus()
-			target_info_requested.emit(null)
+		# 点击虚空 → 不执行任何操作
 		return
 	
 	if result:

@@ -779,12 +779,13 @@ func _on_overview_label_input(event: InputEvent, entry: Dictionary) -> void:
 		return
 	
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# Alt+左键 → 相机锁定/解锁
+		# Alt+左键 → 相机锁定 + 更新目标面板（与 3D 空间 Alt+点击行为一致）
 		if event.alt_pressed and _player_controller:
 			var target_node = entry.get("node")
 			if is_instance_valid(target_node) and target_node is Node3D:
 				if _player_controller.has_method("set_camera_focus"):
 					_player_controller.set_camera_focus(target_node)
+				_show_target_info(target_node)
 			else:
 				if _player_controller.has_method("clear_camera_focus"):
 					_player_controller.clear_camera_focus()
@@ -818,6 +819,18 @@ func _show_target_info(node: Node) -> void:
 	if not target_info_panel:
 		return
 	
+	# 断开上一个目标的所有信号连接
+	if _target_node and is_instance_valid(_target_node) and _target_node is Ship:
+		var old = _target_node as Ship
+		if old.shield_changed.is_connected(_update_target_shield):
+			old.shield_changed.disconnect(_update_target_shield)
+		if old.armor_changed.is_connected(_update_target_armor):
+			old.armor_changed.disconnect(_update_target_armor)
+		if old.hull_changed.is_connected(_update_target_hull):
+			old.hull_changed.disconnect(_update_target_hull)
+		if old.ship_destroyed.is_connected(_on_target_destroyed):
+			old.ship_destroyed.disconnect(_on_target_destroyed)
+	
 	_target_node = node
 	target_info_panel.show()
 	
@@ -835,6 +848,24 @@ func _show_target_info(node: Node) -> void:
 				_:
 					target_type_label.text = "中立"
 					target_type_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		# 连接信号以实时跟踪目标状态
+		var target_ship = node as Ship
+		if target_ship.shield_changed.is_connected(_update_target_shield):
+			target_ship.shield_changed.disconnect(_update_target_shield)
+		if target_ship.armor_changed.is_connected(_update_target_armor):
+			target_ship.armor_changed.disconnect(_update_target_armor)
+		if target_ship.hull_changed.is_connected(_update_target_hull):
+			target_ship.hull_changed.disconnect(_update_target_hull)
+		if target_ship.ship_destroyed.is_connected(_on_target_destroyed):
+			target_ship.ship_destroyed.disconnect(_on_target_destroyed)
+		target_ship.shield_changed.connect(_update_target_shield)
+		target_ship.armor_changed.connect(_update_target_armor)
+		target_ship.hull_changed.connect(_update_target_hull)
+		target_ship.ship_destroyed.connect(_on_target_destroyed)
+		
+		_update_target_shield(target_ship.current_shield, target_ship.max_shield)
+		_update_target_armor(target_ship.current_armor, target_ship.max_armor)
+		_update_target_hull(target_ship.current_hull, target_ship.max_hull)
 	elif node is Asteroid:
 		name_str = node.ore_type + "小行星"
 		if target_type_label:
