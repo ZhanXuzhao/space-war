@@ -26,28 +26,48 @@ var orbit_target: Node3D = null
 var orbit_range: float = 1200.0
 var orbit_angle: float = 0.0
 
-## 视角控制
+# ---------------------------------------------------------------------------
+# 相机系统 — 参数
+# ---------------------------------------------------------------------------
+
+## 鼠标拖拽旋转灵敏度
 @export var camera_orbit_speed: float = 0.005
-@export var camera_zoom_speed: float = 5.0
+## 滚轮缩放灵敏度（系数乘数）
+@export var camera_zoom_factor: float = 1.2
+## 最近/最远/默认观察距离
 @export var camera_min_distance: float = 50.0
 @export var camera_max_distance: float = 200000.0
 @export var camera_default_distance: float = 900.0
 
+# ---------------------------------------------------------------------------
+# 相机系统 — 运行时状态
+# ---------------------------------------------------------------------------
+
+## Camera3D 节点引用
 var _camera: Camera3D
+## 当前球面坐标：距离 / 方位角(°) / 仰角(°)
 var _cam_distance: float = 900.0
 var _cam_azimuth: float = 0.0
 var _cam_elevation: float = 15.0
-var _left_click_pressed: bool = false
-var _left_click_drag_start: Vector2 = Vector2.ZERO
-var is_left_click_drag: bool = false
+## 相机轨道中心点（平滑追踪目标）
 var _camera_look_at_pos: Vector3 = Vector3.ZERO
+## 锁定追踪的目标（不为空时相机围绕此目标旋转）
+var camera_focus_target: Node3D = null
 
-## 环绕轨迹追踪
+# ---------------------------------------------------------------------------
+# 相机系统 — 鼠标拖拽输入状态
+# ---------------------------------------------------------------------------
+
+var _drag_left_pressed: bool = false
+var _drag_left_start_pos: Vector2 = Vector2.ZERO
+var _drag_left_is_dragging: bool = false
+
+# ---------------------------------------------------------------------------
+# 环绕轨迹追踪
+# ---------------------------------------------------------------------------
+
 var _trajectory_shown_target: Ship = null
 const ORBIT_TRAJECTORY_RADIUS: float = 1200.0
-
-## 相机锁定目标
-var camera_focus_target: Node3D = null
 
 func _ready() -> void:
 	controlled_ship = get_parent() as Ship
@@ -57,11 +77,12 @@ func _ready() -> void:
 	
 	controlled_ship.add_to_group("player_ship")
 	_setup_camera()
-	_adjust_for_ship_class()
-	# 镜头最近距离 = 船长 × 2（考虑模型缩放）
-	camera_min_distance = controlled_ship.SHIP_LENGTH * controlled_ship.scale.x * 2.0
+	_adjust_camera_for_ship_class()
+	_adjust_orbit_for_ship_class()
 	_cam_distance = camera_default_distance
 	_camera_look_at_pos = controlled_ship.global_position
+	# 镜头最近距离 = 船长 × 2（考虑模型缩放），覆盖 @export 默认值
+	camera_min_distance = controlled_ship.SHIP_LENGTH * controlled_ship.scale.x * 2.0
 
 func _setup_camera() -> void:
 	_camera = get_node_or_null("../Camera3D") as Camera3D
@@ -75,18 +96,15 @@ func _setup_camera() -> void:
 		_camera.transform = Transform3D(cam_basis, Vector3(0, 10, 30))
 		controlled_ship.call_deferred("add_child", _camera)
 
-func _adjust_for_ship_class() -> void:
+func _adjust_camera_for_ship_class() -> void:
 	if not controlled_ship or not controlled_ship.ship_data:
 		return
 	match controlled_ship.ship_data.ship_class:
 		ShipData.ShipClass.FRIGATE:
-			orbit_range = 1200.0
 			camera_default_distance = 900.0
 		ShipData.ShipClass.CRUISER:
-			orbit_range = 2500.0
 			camera_default_distance = 2000.0
 		ShipData.ShipClass.BATTLESHIP:
-			orbit_range = 5000.0
 			camera_default_distance = 4000.0
 	_cam_distance = camera_default_distance
 
@@ -100,7 +118,7 @@ func _process(delta: float) -> void:
 		FlightMode.WARPING:
 			_process_warp(delta)
 	
-	_update_camera()
+	_update_camera(delta)
 
 func _physics_process(delta: float) -> void:
 	if not controlled_ship or not controlled_ship.is_alive:
@@ -120,6 +138,18 @@ func _process_normal_flight(delta: float) -> void:
 # ---------------------------------------------------------------------------
 # 环绕系统
 # ---------------------------------------------------------------------------
+
+## 根据船型调整默认环绕半径
+func _adjust_orbit_for_ship_class() -> void:
+	if not controlled_ship or not controlled_ship.ship_data:
+		return
+	match controlled_ship.ship_data.ship_class:
+		ShipData.ShipClass.FRIGATE:
+			orbit_range = 1200.0
+		ShipData.ShipClass.CRUISER:
+			orbit_range = 2500.0
+		ShipData.ShipClass.BATTLESHIP:
+			orbit_range = 5000.0
 
 ## 环绕目标飞行（径向+切向速度分配优化）
 func _update_orbit(delta: float) -> void:
@@ -296,21 +326,29 @@ func set_camera_focus(target: Node3D) -> void:
 	_camera_look_at_pos = _get_camera_look_at_pos()
 	camera_focus_target = target
 	if target:
-		# 如果目标是飞船且正在攻击某个目标，将镜头方向设为攻击目标位置+(0.5,0,0)*武器射程所在方向
-		if target is Ship and target.is_alive:
-			var ship_target = target as Ship
-			if ship_target.active_target and is_instance_valid(ship_target.active_target) and ship_target.active_target.is_alive:
-				var offset_pos = ship_target.active_target.global_position + Vector3(ship_target.current_targeting_range * 0.3, 0, 0)
-				var attack_dir = offset_pos - target.global_position
-				if attack_dir.length_squared() > 0.01:
-					attack_dir = attack_dir.normalized()
-					# 镜头朝向偏移后的攻击目标方向：将相机置于飞船相对于该位置的背后
-					var cam_dir = -attack_dir
-					_cam_azimuth = rad_to_deg(atan2(cam_dir.x, cam_dir.z))
-					_cam_elevation = rad_to_deg(asin(clampf(cam_dir.y, -1.0, 1.0)))
+		_align_camera_to_attack_direction(target)
 		add_message("相机锁定: " + target.name, Color(0.3, 0.8, 1))
 	else:
 		add_message("相机解锁", Color(0.7, 0.7, 0.7))
+
+## 当锁定的飞船正在攻击目标时，将相机置于其攻击方向侧后方
+func _align_camera_to_attack_direction(target: Node3D) -> void:
+	if not (target is Ship and target.is_alive):
+		return
+	var ship_target = target as Ship
+	if not (ship_target.active_target and is_instance_valid(ship_target.active_target) and ship_target.active_target.is_alive):
+		return
+	# 取攻击目标位置 + 横向偏移作为参考方向
+	var offset_pos = ship_target.active_target.global_position \
+		+ Vector3(ship_target.current_targeting_range * 0.3, 0, 0)
+	var attack_dir = offset_pos - target.global_position
+	if attack_dir.length_squared() <= 0.01:
+		return
+	attack_dir = attack_dir.normalized()
+	# 相机置于飞船相对于攻击方向的背后
+	var cam_dir = -attack_dir
+	_cam_azimuth = rad_to_deg(atan2(cam_dir.x, cam_dir.z))
+	_cam_elevation = rad_to_deg(asin(clampf(cam_dir.y, -1.0, 1.0)))
 
 func clear_camera_focus() -> void:
 	set_camera_focus(null)
@@ -320,17 +358,11 @@ func _get_camera_look_at_pos() -> Vector3:
 		return camera_focus_target.global_position
 	return controlled_ship.global_position
 
-func _update_camera() -> void:
+func _update_camera(delta: float) -> void:
 	if not _camera or not _camera.is_inside_tree() or not controlled_ship:
 		return
-	var rad_az = deg_to_rad(_cam_azimuth)
-	var rad_el = deg_to_rad(_cam_elevation)
-	var offset = Vector3(
-		_cam_distance * cos(rad_el) * sin(rad_az),
-		_cam_distance * sin(rad_el),
-		_cam_distance * cos(rad_el) * cos(rad_az)
-	)
 	
+	# 确定轨道中心目标点
 	var desired_pos: Vector3
 	if camera_focus_target and is_instance_valid(camera_focus_target) and camera_focus_target.is_inside_tree():
 		desired_pos = camera_focus_target.global_position
@@ -338,11 +370,43 @@ func _update_camera() -> void:
 		camera_focus_target = null
 		desired_pos = controlled_ship.global_position
 	
-	var weight = 1.0 - exp(-3.0 * get_process_delta_time())
-	_camera_look_at_pos = _camera_look_at_pos.lerp(desired_pos, weight)
+	# 平滑轨道中心（指数逼近）
+	var smooth_weight = 1.0 - exp(-3.0 * delta)
+	_camera_look_at_pos = _camera_look_at_pos.lerp(desired_pos, smooth_weight)
 	
+	# 根据球面坐标计算相机偏移
+	var offset = _compute_camera_offset()
 	_camera.global_position = _camera_look_at_pos + offset
-	_camera.look_at(desired_pos, Vector3.UP)
+	
+	# 旋转用 slerp 平滑追踪实际目标位置，避免抖动
+	var target_quat = Quaternion(Basis.looking_at(desired_pos - _camera.global_position, Vector3.UP))
+	var rot_weight = 1.0 - exp(-8.0 * delta)
+	_camera.quaternion = _camera.quaternion.slerp(target_quat, rot_weight)
+
+## 根据当前球面坐标（方位角/仰角/距离）计算相机相对偏移
+func _compute_camera_offset() -> Vector3:
+	var rad_az = deg_to_rad(_cam_azimuth)
+	var rad_el = deg_to_rad(_cam_elevation)
+	return Vector3(
+		_cam_distance * cos(rad_el) * sin(rad_az),
+		_cam_distance * sin(rad_el),
+		_cam_distance * cos(rad_el) * cos(rad_az)
+	)
+
+## 当用户主动操作镜头时，立即对齐轨道中心和旋转到实际目标
+## 避免 Lerp/Slerp 滞后导致的画面偏移感
+func _snap_camera() -> void:
+	if camera_focus_target and is_instance_valid(camera_focus_target) and camera_focus_target.is_inside_tree():
+		_camera_look_at_pos = camera_focus_target.global_position
+	else:
+		_camera_look_at_pos = controlled_ship.global_position
+	
+	_camera.global_position = _camera_look_at_pos + _compute_camera_offset()
+	var target_basis = Basis.looking_at(
+		(_camera_look_at_pos if camera_focus_target else controlled_ship.global_position) - _camera.global_position,
+		Vector3.UP
+	)
+	_camera.quaternion = Quaternion(target_basis)
 
 # ---------------------------------------------------------------------------
 # 输入处理
@@ -369,33 +433,37 @@ func _input(event: InputEvent) -> void:
 		_cam_azimuth = 0.0
 		_cam_elevation = 15.0
 		_cam_distance = camera_default_distance
+		_snap_camera()
 		add_message("相机复位", Color(0.3, 0.8, 1))
 	
 	# 左键拖拽 - 旋转视角
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			_left_click_pressed = true
-			_left_click_drag_start = get_viewport().get_mouse_position()
-			is_left_click_drag = false
+			_drag_left_pressed = true
+			_drag_left_start_pos = get_viewport().get_mouse_position()
+			_drag_left_is_dragging = false
 		else:
-			_left_click_pressed = false
+			_drag_left_pressed = false
 	
-	if event is InputEventMouseMotion and _left_click_pressed:
-		if not is_left_click_drag:
-			var drag_dist = _left_click_drag_start.distance_to(get_viewport().get_mouse_position())
+	if event is InputEventMouseMotion and _drag_left_pressed:
+		if not _drag_left_is_dragging:
+			var drag_dist = _drag_left_start_pos.distance_to(get_viewport().get_mouse_position())
 			if drag_dist > 5.0:
-				is_left_click_drag = true
-		if is_left_click_drag:
+				_drag_left_is_dragging = true
+		if _drag_left_is_dragging:
 			_cam_azimuth -= event.relative.x * camera_orbit_speed * rad_to_deg(1.0)
 			_cam_elevation += event.relative.y * camera_orbit_speed * rad_to_deg(1.0)
 			_cam_elevation = clampf(_cam_elevation, -89.0, 89.0)
+			_snap_camera()
 	
-	# 滚轮缩放（每次滚动 ±当前距离的 20%）
+	# 滚轮缩放
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			_cam_distance = minf(camera_max_distance, _cam_distance * 1.2)
+			_cam_distance = minf(camera_max_distance, _cam_distance * camera_zoom_factor)
+			_snap_camera()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			_cam_distance = maxf(camera_min_distance, _cam_distance * 0.8)
+			_cam_distance = maxf(camera_min_distance, _cam_distance / camera_zoom_factor)
+			_snap_camera()
 	
 	# -= 键 - 调整游戏速度
 	const TIMESCALE_STEPS: Array[float] = [0.0, 0.1, 0.5, 1.0, 2.0, 3.0, 5.0]
