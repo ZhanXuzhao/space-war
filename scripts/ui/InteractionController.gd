@@ -153,7 +153,8 @@ func _handle_left_click(event: InputEventMouseButton) -> void:
 		elif collider is Station:
 			target_info_requested.emit(collider)
 
-## 计算鼠标射线与飞船本地 XZ 平面（战术网格面）的交点
+## 计算鼠标射线与飞船所处世界水平面（战术网格面）的交点
+## 平面法线 = Vector3.UP（始终水平），经过飞船当前位置
 ## 返回世界空间中的目标位置；若射线平行于平面或交点在后方则返回 null
 func _get_grid_intersection() -> Variant:
 	if not player_ship:
@@ -165,9 +166,9 @@ func _get_grid_intersection() -> Variant:
 	var origin = cam.project_ray_origin(mouse_pos)
 	var direction = cam.project_ray_normal(mouse_pos)
 
-	# 战术网格在飞船的本地 XZ 平面（y=0），世界空间中的平面法线 = ship.basis.y
+	# 战术网格始终水平（世界 XZ 平面），取飞船所处高度的水平面
 	var ship = player_ship
-	var plane_normal = ship.global_basis.y
+	var plane_normal = Vector3.UP
 	var plane_point = ship.global_position
 	var denom = plane_normal.dot(direction)
 	if abs(denom) < 0.0001:

@@ -95,6 +95,9 @@ var _move_preview_line: MeshInstance3D
 ## 是否正在显示移动目标的持久预览（点击后到抵达前持续显示）
 var _show_move_target_preview: bool = false
 
+## 接近目标连线
+var _approach_line: MeshInstance3D
+
 ## 阵营
 enum Faction { PLAYER, NPC_FRIENDLY, NPC_HOSTILE, NEUTRAL }
 @export var faction: Faction = Faction.NEUTRAL
@@ -479,6 +482,7 @@ func _process(delta: float) -> void:
 	_recharge_capacitor(delta)
 	_update_velocity_arrow()
 	_update_approach(delta)
+	_update_approach_line()
 	_update_range_labels()
 	# 更新环绕轨迹圆环的反旋转（敌方飞船也会旋转，需保持 XZ 水平）
 	_update_orbit_trajectory_world_aligned()
@@ -1057,6 +1061,12 @@ func _setup_move_preview() -> void:
 	add_child(_move_preview_line)
 	_move_preview_line.visible = false
 
+	# 接近目标连线
+	_approach_line = MeshInstance3D.new()
+	_approach_line.name = "ApproachLine"
+	add_child(_approach_line)
+	_approach_line.visible = false
+
 ## 显示移动预览（在目标世界位置画小圆 + 从飞船到目标的连线）
 func show_move_preview(world_target: Vector3) -> void:
 	if not _move_preview_circle or not _move_preview_line:
@@ -1111,3 +1121,43 @@ func hide_move_preview() -> void:
 		_move_preview_circle.visible = false
 	if _move_preview_line:
 		_move_preview_line.visible = false
+
+# ---------------------------------------------------------------------------
+# 接近目标连线
+# ---------------------------------------------------------------------------
+
+## 每帧更新接近目标连线
+func _update_approach_line() -> void:
+	if approach_target and is_instance_valid(approach_target):
+		if not _approach_line.visible:
+			_approach_line.visible = true
+		_draw_approach_line()
+	else:
+		if _approach_line and _approach_line.visible:
+			_approach_line.visible = false
+
+## 绘制接近连线（从飞船到目标）
+func _draw_approach_line() -> void:
+	if not approach_target or not is_instance_valid(approach_target):
+		_approach_line.visible = false
+		return
+	
+	var local_target = to_local(approach_target.global_position)
+	var color = Color(0.3, 1.0, 0.5, 0.8)  # 亮绿色半透明
+	
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_LINES)
+	st.add_vertex(Vector3.ZERO)  # 飞船原点
+	st.add_vertex(local_target)
+	var mesh = st.commit()
+	
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 0.5
+	mesh.surface_set_material(0, mat)
+	
+	_approach_line.mesh = mesh

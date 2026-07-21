@@ -130,7 +130,11 @@ func _physics_process(delta: float) -> void:
 
 ## 正常飞行模式
 func _process_normal_flight(delta: float) -> void:
-	_update_orbit(delta)
+	# 如果有持续靠近目标，跳过环绕逻辑
+	if controlled_ship.approach_target and is_instance_valid(controlled_ship.approach_target):
+		pass
+	else:
+		_update_orbit(delta)
 	
 	if controlled_ship.has_move_order and not controlled_ship.approach_target:
 		var dist = controlled_ship.global_position.distance_to(controlled_ship.move_target)
@@ -208,6 +212,15 @@ func _update_orbit(delta: float) -> void:
 	_orbit_current_velocity += delta_v
 	
 	controlled_ship.order_set_velocity(_orbit_current_velocity)
+
+## 持续靠近目标
+func order_approach_target(target: Node3D) -> void:
+	if not target or not is_instance_valid(target):
+		return
+	if orbit_target:
+		cancel_orbit()
+	controlled_ship.order_approach(target)
+	add_message("持续靠近: " + target.name, Color(0.3, 0.8, 1))
 
 ## 命令飞船环绕目标飞行
 func order_orbit(target: Node3D, range: float = 1200.0) -> void:
