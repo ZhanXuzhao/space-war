@@ -66,6 +66,25 @@ var weapon_nodes: Array[Node] = []
 const SHIP_LENGTH: float = 300.0
 const SHIP_HALF_WIDTH: float = 75.0
 
+## LOD（Level of Detail）- 远距离使用图标代替3D模型
+## 当距离 > 飞船尺寸 × lod_distance_multiplier 时切换为图标
+## 值从 game_config.cfg [lod] distance_multiplier 加载
+var lod_distance_multiplier: float = 50.0
+
+## 图标纹理路径（按船型）
+const ICON_PATH_FRIGATE: String = "res://images/icon_tiny_frigate.svg"
+const ICON_PATH_CRUISER: String = "res://images/icon_tiny_cruiser.svg"
+const ICON_PATH_BATTLESHIP: String = "res://images/icon_tiny_battleship.svg"
+
+## 3D模型节点引用（GLB实例）
+var _model_node: Node3D = null
+## LOD图标
+var _lod_icon: Sprite3D = null
+## 图标纹理缓存
+var _icon_frigate: Texture2D = null
+var _icon_cruiser: Texture2D = null
+var _icon_battleship: Texture2D = null
+
 ## 防重复初始化标记（脚本热替换时使用）
 var _initialized: bool = false
 
@@ -113,6 +132,66 @@ func _ready() -> void:
 	if faction == Faction.PLAYER:
 		_setup_tactical_grid()
 		_setup_move_preview()
+	_setup_lod()
+
+## LOD 初始化：查找3D模型节点，创建图标精灵
+func _setup_lod() -> void:
+	# 查找GLB模型实例节点（第一个 scene_file_path 非空的子节点）
+	for child in get_children():
+		if child is Node3D and not child.scene_file_path.is_empty():
+			_model_node = child
+			break
+	
+	# 加载图标纹理
+	if ResourceLoader.exists(ICON_PATH_FRIGATE):
+		_icon_frigate = load(ICON_PATH_FRIGATE)
+	if ResourceLoader.exists(ICON_PATH_CRUISER):
+		_icon_cruiser = load(ICON_PATH_CRUISER)
+	if ResourceLoader.exists(ICON_PATH_BATTLESHIP):
+		_icon_battleship = load(ICON_PATH_BATTLESHIP)
+	
+	# 创建 Sprite3D 图标（初始隐藏）
+	_lod_icon = Sprite3D.new()
+	_lod_icon.name = "LodIcon"
+	_lod_icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED  # 始终面向摄像机
+	_lod_icon.no_depth_test = true  # 不被其他物体遮挡
+	_lod_icon.visible = false
+	add_child(_lod_icon)
+	
+	# 根据船型设置对应图标纹理
+	var tex: Texture2D = null
+	if ship_data:
+		match ship_data.ship_class:
+			ShipData.ShipClass.FRIGATE:
+				tex = _icon_frigate
+			ShipData.ShipClass.CRUISER:
+				tex = _icon_cruiser
+			ShipData.ShipClass.BATTLESHIP:
+				tex = _icon_battleship
+	_lod_icon.texture = tex
+	
+	# 从 game_config.cfg 加载LOD参数
+	var cfg = ConfigFile.new()
+	if cfg.load("res://resources/game_config.cfg") == OK:
+		var val = cfg.get_value("lod", "distance_multiplier", 50.0)
+		lod_distance_multiplier = float(val)
+	
+	# 根据阵营设置图标颜色
+	_update_lod_icon_tint()
+
+## 根据阵营设置图标颜色
+func _update_lod_icon_tint() -> void:
+	if not _lod_icon:
+		return
+	match faction:
+		Faction.PLAYER:
+			_lod_icon.modulate = Color(0.2, 0.6, 1.0)  # 蓝色
+		Faction.NPC_HOSTILE:
+			_lod_icon.modulate = Color(1.0, 0.2, 0.1)  # 红色
+		Faction.NPC_FRIENDLY:
+			_lod_icon.modulate = Color(0.2, 1.0, 0.3)  # 绿色
+		Faction.NEUTRAL:
+			_lod_icon.modulate = Color(1.0, 1.0, 1.0)  # 白色
 
 ## 随机飞船名字池（按船型，由 ShipData.SHIP_CLASS_NAMES_POOL 管理）
 ## 公开接口：根据船型获取随机名字（供 EnemySpawner 等外部调用）
@@ -480,6 +559,7 @@ func _process(delta: float) -> void:
 	if not is_alive:
 		return
 	_recharge_capacitor(delta)
+	_update_lod()
 	_update_velocity_arrow()
 	_update_approach(delta)
 	_update_approach_line()
@@ -499,6 +579,39 @@ func _process(delta: float) -> void:
 			# 移动完成或取消，清除持久预览
 			_show_move_target_preview = false
 			hide_move_preview()
+
+## LOD 更新：根据摄像机距离切换3D模型/2D图标
+## 图标在屏幕上保持固定大小（约16像素），并随阵营着色
+func _update_lod() -> void:
+	if not _model_node or not _lod_icon:
+		return
+	var camera = get_viewport().get_camera_3d()
+	if not camera:
+		return
+	
+	var cam_distance = global_position.distance_to(camera.global_position)
+	
+	# 飞船实际尺寸 = 基础长度 × 缩放系数
+	var ship_real_length = SHIP_LENGTH * maxf(scale.x, 0.01)
+	var lod_threshold = ship_real_length * lod_distance_multiplier
+	
+	var use_icon = cam_distance > lod_threshold
+	
+	if _model_node.visible == use_icon:
+		# 需要切换状态
+		_model_node.visible = not use_icon
+		_lod_icon.visible = use_icon
+	
+	# 图标固定屏幕大小：根据距离动态调整 pixel_size
+	# 公式：pixel_size = desired_pixels * 2 * dist * tan(FOV/2) / (tex_width * viewport_height)
+	# 目标屏幕像素设为 16，图标纹理 32x32，所以 desired_pixels / tex_width = 0.5
+	# 注意：Sprite3D 是飞船子节点，会继承父节点 scale，需要除以 scale 抵消
+	var viewport = get_viewport()
+	var viewport_height = viewport.get_visible_rect().size.y
+	if viewport_height > 0:
+		var fov_half = deg_to_rad(camera.fov) * 0.5
+		var parent_scale = maxf(scale.x, 0.01)
+		_lod_icon.pixel_size = cam_distance * tan(fov_half) / viewport_height / parent_scale
 
 ## 更新速度箭头：速度越快箭头越长
 func _update_velocity_arrow() -> void:
