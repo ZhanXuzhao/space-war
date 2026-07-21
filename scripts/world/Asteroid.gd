@@ -62,6 +62,10 @@ func _respawn() -> void:
 
 ## 开采耗竭时产生小爆炸
 func _spawn_depleted_explosion() -> void:
+	# 检查全局设置：是否显示爆炸特效
+	var g = get_node_or_null("/root/Global")
+	if g and not g.explosion_visible:
+		return
 	var explosion_scene = preload("res://scenes/effects/Explosion.tscn")
 	if not explosion_scene:
 		return

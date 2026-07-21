@@ -62,6 +62,10 @@ func _hit_target() -> void:
 func _spawn_hit_explosion() -> void:
 	## 命中爆炸特效
 	## 优先使用 explosion_effect（由 WeaponData 配置），否则使用默认 Explosion 场景
+	# 检查全局设置：是否显示爆炸特效
+	var g = get_node_or_null("/root/Global")
+	if g and not g.explosion_visible:
+		return
 	var explosion_scene: PackedScene = null
 	
 	if explosion_effect:

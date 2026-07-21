@@ -965,6 +965,10 @@ func _destroy() -> void:
 func _spawn_explosion() -> void:
 	## 创建爆炸特效
 	## 根据船型和阵营自动选择大小和颜色
+	# 检查全局设置：是否显示爆炸特效
+	var g = get_node_or_null("/root/Global")
+	if g and not g.explosion_visible:
+		return
 	var explosion_scene = preload("res://scenes/effects/Explosion.tscn")
 	if not explosion_scene:
 		return

@@ -57,6 +57,23 @@ func _ready() -> void:
 func _setup_effects() -> void:
 	var target_length = missile_size
 	
+	# 检查全局设置：是否显示尾焰
+	var g = get_node_or_null("/root/Global")
+	var show_trail = true
+	if g:
+		show_trail = g.missile_trail_visible
+	
+	if not show_trail:
+		# 不显示尾焰，但保留灯光
+		_missile_light = OmniLight3D.new()
+		_missile_light.name = "MissileLight"
+		_missile_light.omni_range = target_length * 3.0
+		_missile_light.light_color = Color(1.0, 0.6, 0.1)
+		_missile_light.light_energy = 1.5
+		_missile_light.position.z = target_length * 0.2
+		add_child(_missile_light)
+		return
+	
 	# ---- 1. 尾焰粒子 ----
 	_tail_flame = GPUParticles3D.new()
 	_tail_flame.name = "TailFlame"
@@ -140,8 +157,11 @@ func _stop_and_free() -> void:
 		_tail_flame.emitting = false
 		_tail_flame.one_shot = true
 	
-	# 等尾焰粒子生命周期结束后再销毁
-	await get_tree().create_timer(0.5).timeout
+	# 等尾焰粒子生命周期结束后再销毁（若无尾焰则直接销毁）
+	if _tail_flame:
+		await get_tree().create_timer(0.5).timeout
+	else:
+		await get_tree().process_frame
 	queue_free()
 
 func _process(delta: float) -> void:

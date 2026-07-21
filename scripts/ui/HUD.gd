@@ -31,6 +31,8 @@ class_name HUD
 @export var fps_label: Label
 @export var auto_lock_check: CheckBox
 @export var auto_attack_check: CheckBox
+@export var missile_trail_check: CheckBox
+@export var explosion_check: CheckBox
 @export var message_log: VBoxContainer
 @export var context_menu: OverviewContextMenu
 @export var spawn_button: Button
@@ -72,6 +74,8 @@ var _auto_attack_timer: float = 0.0
 const AUTO_ATTACK_INTERVAL: float = 1.0
 var _auto_lock_enabled: bool = true
 var _auto_attack_enabled: bool = true
+var _missile_trail_enabled: bool = true
+var _explosion_enabled: bool = true
 
 var player_ship: Ship = null
 var _player_controller: Node = null
@@ -148,6 +152,15 @@ func _ready() -> void:
 		auto_lock_check.toggled.connect(_on_auto_lock_toggled)
 	if auto_attack_check:
 		auto_attack_check.toggled.connect(_on_auto_attack_toggled)
+	# 手动查找导弹尾焰勾选框（位于左侧菜单栏）
+	if not missile_trail_check:
+		missile_trail_check = get_node_or_null("MenuPanel/ButtonList/MissileTrailCheck") as CheckBox
+	if missile_trail_check:
+		missile_trail_check.toggled.connect(_on_missile_trail_toggled)
+	if not explosion_check:
+		explosion_check = get_node_or_null("MenuPanel/ButtonList/ExplosionCheck") as CheckBox
+	if explosion_check:
+		explosion_check.toggled.connect(_on_explosion_toggled)
 	# 手动查找帧率标签
 	if not fps_label:
 		fps_label = get_node_or_null("FPSLabel") as Label
@@ -1378,6 +1391,34 @@ func _on_auto_attack_toggled(button_pressed: bool) -> void:
 		add_message("自动攻击: 关闭", Color(0.7, 0.7, 0.7))
 	_save_panel_layout()
 
+## ====== 导弹尾焰 ======
+
+func _on_missile_trail_toggled(button_pressed: bool) -> void:
+	_missile_trail_enabled = button_pressed
+	# 更新全局变量
+	var g = get_node("/root/Global")
+	if g:
+		g.missile_trail_visible = button_pressed
+	if button_pressed:
+		add_message("导弹尾焰: 开启", Color(1, 0.6, 0.1))
+	else:
+		add_message("导弹尾焰: 关闭", Color(0.7, 0.7, 0.7))
+	_save_panel_layout()
+
+## ====== 爆炸特效 ======
+
+func _on_explosion_toggled(button_pressed: bool) -> void:
+	_explosion_enabled = button_pressed
+	# 更新全局变量
+	var g = get_node("/root/Global")
+	if g:
+		g.explosion_visible = button_pressed
+	if button_pressed:
+		add_message("爆炸特效: 开启", Color(1, 0.4, 0.05))
+	else:
+		add_message("爆炸特效: 关闭", Color(0.7, 0.7, 0.7))
+	_save_panel_layout()
+
 ## 自动锁定：扫描附近敌对飞船并锁定
 func _process_auto_lock() -> void:
 	if not player_ship or not is_instance_valid(player_ship):
@@ -1566,23 +1607,38 @@ func _save_panel_layout() -> void:
 		cfg.set_value("MessageLog", "offset_top", msg_log.offset_top)
 		cfg.set_value("MessageLog", "offset_right", msg_log.offset_right)
 		cfg.set_value("MessageLog", "offset_bottom", msg_log.offset_bottom)
-	# 保存自动锁定/攻击勾选状态
+	# 保存自动锁定/攻击/导弹尾焰勾选状态
 	if auto_lock_check:
 		cfg.set_value("AutoSettings", "auto_lock", auto_lock_check.button_pressed)
 	if auto_attack_check:
 		cfg.set_value("AutoSettings", "auto_attack", auto_attack_check.button_pressed)
+	if missile_trail_check:
+		cfg.set_value("AutoSettings", "missile_trail", missile_trail_check.button_pressed)
+	if explosion_check:
+		cfg.set_value("AutoSettings", "explosion", explosion_check.button_pressed)
 	cfg.save(PANEL_SAVE_PATH)
 
 func _load_panel_layout() -> void:
 	var cfg = ConfigFile.new()
 	if cfg.load(PANEL_SAVE_PATH) != OK:
-		# 没有存档：自动锁定/攻击默认开启
+		# 没有存档：自动锁定/攻击/导弹尾焰/爆炸特效默认开启
 		_auto_lock_enabled = true
 		_auto_attack_enabled = true
+		_missile_trail_enabled = true
+		_explosion_enabled = true
 		if auto_lock_check:
 			auto_lock_check.set_pressed_no_signal(true)
 		if auto_attack_check:
 			auto_attack_check.set_pressed_no_signal(true)
+		if missile_trail_check:
+			missile_trail_check.set_pressed_no_signal(true)
+		if explosion_check:
+			explosion_check.set_pressed_no_signal(true)
+		# 同步全局变量
+		var g = get_node("/root/Global")
+		if g:
+			g.missile_trail_visible = true
+			g.explosion_visible = true
 		return
 	var overview = get_node_or_null("OverviewPanel")
 	var target = get_node_or_null("TargetPanel")
@@ -1627,7 +1683,7 @@ func _load_panel_layout() -> void:
 			msg_log.offset_right = cfg.get_value("MessageLog", "offset_right")
 			msg_log.offset_bottom = cfg.get_value("MessageLog", "offset_bottom")
 	
-	# 加载自动锁定/攻击勾选状态
+	# 加载自动锁定/攻击/导弹尾焰/爆炸特效勾选状态
 	if cfg.has_section_key("AutoSettings", "auto_lock"):
 		var val = cfg.get_value("AutoSettings", "auto_lock", false)
 		_auto_lock_enabled = val
@@ -1638,6 +1694,24 @@ func _load_panel_layout() -> void:
 		_auto_attack_enabled = val
 		if auto_attack_check:
 			auto_attack_check.set_pressed_no_signal(val)
+	if cfg.has_section_key("AutoSettings", "missile_trail"):
+		var val = cfg.get_value("AutoSettings", "missile_trail", true)
+		_missile_trail_enabled = val
+		if missile_trail_check:
+			missile_trail_check.set_pressed_no_signal(val)
+		# 同步全局变量
+		var g = get_node("/root/Global")
+		if g:
+			g.missile_trail_visible = val
+	if cfg.has_section_key("AutoSettings", "explosion"):
+		var val = cfg.get_value("AutoSettings", "explosion", true)
+		_explosion_enabled = val
+		if explosion_check:
+			explosion_check.set_pressed_no_signal(val)
+		# 同步全局变量
+		var g = get_node("/root/Global")
+		if g:
+			g.explosion_visible = val
 
 ## ====== 消息与信息 ======
 

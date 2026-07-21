@@ -56,3 +56,17 @@ theme_override_colors/font_hover_color = Color(1, 0.9, 0.5, 1)
 theme_override_font_sizes/font_size = 11
 text = "重开游戏"
 flat = true
+
+[node name="MissileTrailCheck" type="CheckBox" parent="ButtonList"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.6, 0.1, 1)
+theme_override_font_sizes/font_size = 11
+button_pressed = true
+text = "导弹尾焰"
+
+[node name="ExplosionCheck" type="CheckBox" parent="ButtonList"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.05, 1)
+theme_override_font_sizes/font_size = 11
+button_pressed = true
+text = "爆炸特效"

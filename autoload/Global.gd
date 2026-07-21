@@ -24,6 +24,11 @@ var known_stations: Array[String] = []
 var kill_count: int = 0
 var mining_yield_total: int = 0
 
+## 导弹尾焰可见性（默认开启）
+var missile_trail_visible: bool = true
+## 爆炸特效可见性（默认开启）
+var explosion_visible: bool = true
+
 func _ready() -> void:
 	init_player_data()
 
