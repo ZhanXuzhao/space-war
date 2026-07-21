@@ -18,6 +18,16 @@ var _right_click_pressed: bool = false
 func _ready() -> void:
 	await get_tree().process_frame
 	_find_player()
+	set_process(true)
+
+func _process(_delta: float) -> void:
+	if not player_ship:
+		return
+	if Input.is_key_pressed(KEY_Q):
+		_update_move_preview()
+	else:
+		if player_ship and player_ship.has_method("hide_move_preview"):
+			player_ship.hide_move_preview()
 
 func _find_player() -> void:
 	var ships = get_tree().get_nodes_in_group("player_ship")
@@ -114,6 +124,11 @@ func _handle_left_click(event: InputEventMouseButton) -> void:
 	var query = PhysicsRayQueryParameters3D.create(origin, ray_end)
 	var result = space_state.intersect_ray(query)
 	
+	# Q+左键 → 移动命令（类似右键行为）
+	if Input.is_key_pressed(KEY_Q):
+		_handle_q_left_click(result, origin, direction)
+		return
+	
 	# Alt+左键 → 显示目标信息面板 + 相机锁定（点击虚空不执行操作）
 	if event.alt_pressed:
 		if result:
@@ -137,3 +152,49 @@ func _handle_left_click(event: InputEventMouseButton) -> void:
 			target_info_requested.emit(collider)
 		elif collider is Station:
 			target_info_requested.emit(collider)
+
+## 计算鼠标射线与飞船本地 XZ 平面（战术网格面）的交点
+## 返回世界空间中的目标位置；若射线平行于平面或交点在后方则返回 null
+func _get_grid_intersection() -> Variant:
+	if not player_ship:
+		return null
+	var cam = _get_camera()
+	if not cam:
+		return null
+	var mouse_pos = get_viewport().get_mouse_position()
+	var origin = cam.project_ray_origin(mouse_pos)
+	var direction = cam.project_ray_normal(mouse_pos)
+
+	# 战术网格在飞船的本地 XZ 平面（y=0），世界空间中的平面法线 = ship.basis.y
+	var ship = player_ship
+	var plane_normal = ship.global_basis.y
+	var plane_point = ship.global_position
+	var denom = plane_normal.dot(direction)
+	if abs(denom) < 0.0001:
+		return null  # 射线平行于平面，无交点
+
+	var t = plane_normal.dot(plane_point - origin) / denom
+	if t < 0:
+		return null  # 交点在相机后方
+
+	return origin + direction * t
+
+## 更新移动预览（Q 按下时每帧调用）
+func _update_move_preview() -> void:
+	if not player_ship:
+		return
+	var world_target = _get_grid_intersection()
+	if world_target != null:
+		if player_ship.has_method("show_move_preview"):
+			player_ship.show_move_preview(world_target)
+	else:
+		if player_ship.has_method("hide_move_preview"):
+			player_ship.hide_move_preview()
+
+## Q+左键 → 移动到鼠标射线与飞船 XZ 平面（战术网格面）的交点
+func _handle_q_left_click(_result: Dictionary, _origin: Vector3, _direction: Vector3) -> void:
+	if not player_ship:
+		return
+	var world_target = _get_grid_intersection()
+	if world_target != null:
+		player_ship.order_move_to(world_target)

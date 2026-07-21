@@ -86,6 +86,13 @@ var _range_labels: Array[Label3D] = []
 ## 半径数字的反缩放系数（用于 _process 中计算标签缩放）
 var _range_label_scale_inv: float = 1.0
 
+## 移动预览 - 目标位置小圆环（Q+鼠标时显示）
+var _move_preview_circle: MeshInstance3D
+## 移动预览 - 飞船到目标的连线（Q+鼠标时显示）
+var _move_preview_line: MeshInstance3D
+## 是否正在显示移动目标的持久预览（点击后到抵达前持续显示）
+var _show_move_target_preview: bool = false
+
 ## 阵营
 enum Faction { PLAYER, NPC_FRIENDLY, NPC_HOSTILE, NEUTRAL }
 @export var faction: Faction = Faction.NEUTRAL
@@ -100,6 +107,7 @@ func _ready() -> void:
 	_setup_nose_color()
 	if faction == Faction.PLAYER:
 		_setup_tactical_grid()
+		_setup_move_preview()
 
 ## 随机飞船名字池（按船型，由 ShipData.SHIP_CLASS_NAMES_POOL 管理）
 ## 公开接口：根据船型获取随机名字（供 EnemySpawner 等外部调用）
@@ -472,6 +480,17 @@ func _process(delta: float) -> void:
 	_update_range_labels()
 	if faction == Faction.PLAYER:
 		_update_drop_lines()
+		_update_tactical_grid_world_aligned()
+	# 移动目标持久预览：飞船移动时持续更新连线，抵达后自动隐藏
+	if _show_move_target_preview:
+		if has_move_order and is_alive:
+			# 如果没按住 Q，由飞船自己更新预览；按住 Q 时由 InteractionController 控制
+			if not Input.is_key_pressed(KEY_Q):
+				show_move_preview(move_target)
+		else:
+			# 移动完成或取消，清除持久预览
+			_show_move_target_preview = false
+			hide_move_preview()
 
 ## 更新速度箭头：速度越快箭头越长
 func _update_velocity_arrow() -> void:
@@ -598,6 +617,8 @@ func _setup_tactical_grid() -> void:
 			label.position = pos
 			label.scale = Vector3.ONE * scale_inv
 			add_child(label)
+			# 记录标签的原始局部偏移，用于每帧反旋转保持世界对齐
+			label.set_meta("world_offset", pos)
 			_range_labels.append(label)
 	
 	# 创建敌方飞船到网格面的垂线网格实例
@@ -610,6 +631,20 @@ func _setup_tactical_grid() -> void:
 	drop_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	drop_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_drop_lines.material_override = drop_mat
+
+## 每帧反旋转战术网格，使其永远水平于世界坐标系（Y轴垂直、XZ线平行世界）
+func _update_tactical_grid_world_aligned() -> void:
+	if not _tactical_grid or not _tactical_grid.visible:
+		return
+	# 提取飞船旋转的逆，仅抵消旋转，保留位置和缩放继承
+	var inv_rot = Basis(global_basis.get_rotation_quaternion().inverse())
+	_tactical_grid.transform.basis = inv_rot
+	_drop_lines.transform.basis = inv_rot
+	for label in _range_labels:
+		if not label.has_meta("world_offset"):
+			continue
+		var orig_offset: Vector3 = label.get_meta("world_offset")
+		label.position = inv_rot * orig_offset
 
 ## 更新敌方飞船到战术网格面（XZ平面）的弧线
 ## 以我方为圆心、敌我距离为半径，在敌我所在的垂直平面内画弧，从敌方位置落到 XZ 网格面
@@ -903,6 +938,9 @@ func order_move_to(position: Vector3) -> void:
 	move_target = position
 	has_move_order = true
 	has_velocity_order = false
+	# 启用移动目标持久预览（抵达后自动消失）
+	_show_move_target_preview = true
+	show_move_preview(position)
 
 ## 速度指令模式：直接指定目标速度向量（用于环绕径向/切向分配）
 func order_set_velocity(target_velocity: Vector3) -> void:
@@ -983,3 +1021,74 @@ func toggle_orbit_trajectory(visible: bool, radius: float = 1200.0) -> void:
 		show_orbit_trajectory(radius)
 	else:
 		hide_orbit_trajectory()
+
+# ---------------------------------------------------------------------------
+# Q+鼠标 移动预览（小圆 + 连线）
+# ---------------------------------------------------------------------------
+
+## 初始化移动预览视觉元素
+func _setup_move_preview() -> void:
+	_move_preview_circle = MeshInstance3D.new()
+	_move_preview_circle.name = "MovePreviewCircle"
+	add_child(_move_preview_circle)
+	_move_preview_circle.visible = false
+
+	_move_preview_line = MeshInstance3D.new()
+	_move_preview_line.name = "MovePreviewLine"
+	add_child(_move_preview_line)
+	_move_preview_line.visible = false
+
+## 显示移动预览（在目标世界位置画小圆 + 从飞船到目标的连线）
+func show_move_preview(world_target: Vector3) -> void:
+	if not _move_preview_circle or not _move_preview_line:
+		return
+	if not _tactical_grid or not _tactical_grid.visible:
+		hide_move_preview()
+		return
+
+	var local_target = to_local(world_target)
+	var preview_color = Color(0.3, 1.0, 0.5, 0.9)  # 亮绿色半透明
+	var circle_radius = 100.0
+	var segments = 32
+
+	# --- 更新目标小圆环 ---
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_LINES)
+	for i in range(segments):
+		var a1 = (2.0 * PI * i) / segments
+		var a2 = (2.0 * PI * (i + 1)) / segments
+		var p1 = Vector3(cos(a1) * circle_radius, 0.0, sin(a1) * circle_radius)
+		var p2 = Vector3(cos(a2) * circle_radius, 0.0, sin(a2) * circle_radius)
+		st.add_vertex(p1 + local_target)
+		st.add_vertex(p2 + local_target)
+	var mesh = st.commit()
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = preview_color
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh.surface_set_material(0, mat)
+	_move_preview_circle.mesh = mesh
+	_move_preview_circle.visible = true
+
+	# --- 更新飞船到目标的连线 ---
+	st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_LINES)
+	st.add_vertex(Vector3.ZERO)  # 飞船原点（局部坐标）
+	st.add_vertex(local_target)
+	mesh = st.commit()
+	mat = StandardMaterial3D.new()
+	mat.albedo_color = preview_color
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh.surface_set_material(0, mat)
+	_move_preview_line.mesh = mesh
+	_move_preview_line.visible = true
+
+## 隐藏移动预览
+func hide_move_preview() -> void:
+	if _show_move_target_preview:
+		return  # 有持久预览时跳过隐藏，由抵达逻辑自动清除
+	if _move_preview_circle:
+		_move_preview_circle.visible = false
+	if _move_preview_line:
+		_move_preview_line.visible = false

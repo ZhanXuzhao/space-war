@@ -377,22 +377,34 @@ func _update_camera(delta: float) -> void:
 	var desired_pos: Vector3
 	if camera_focus_target and is_instance_valid(camera_focus_target) and camera_focus_target.is_inside_tree():
 		desired_pos = camera_focus_target.global_position
+		# 有焦点目标时平滑过渡
+		var smooth_weight = 1.0 - exp(-3.0 * delta)
+		_camera_look_at_pos = _camera_look_at_pos.lerp(desired_pos, smooth_weight)
 	else:
 		camera_focus_target = null
 		desired_pos = controlled_ship.global_position
-	
-	# 平滑轨道中心（指数逼近）
-	var smooth_weight = 1.0 - exp(-3.0 * delta)
-	_camera_look_at_pos = _camera_look_at_pos.lerp(desired_pos, smooth_weight)
+		# 无焦点目标时直接跟随飞船，位置与朝向均无平滑
+		_camera_look_at_pos = desired_pos
 	
 	# 根据球面坐标计算相机偏移
 	var offset = _compute_camera_offset()
-	_camera.global_position = _camera_look_at_pos + offset
-	
-	# 旋转用 slerp 平滑追踪实际目标位置，避免抖动
-	var target_quat = Quaternion(Basis.looking_at(desired_pos - _camera.global_position, Vector3.UP))
-	var rot_weight = 1.0 - exp(-8.0 * delta)
-	_camera.quaternion = _camera.quaternion.slerp(target_quat, rot_weight)
+	var target_pos = _camera_look_at_pos + offset
+	# 用 global_transform 整体设置，避免子节点局部变换受父节点旋转影响
+	if camera_focus_target:
+		# 有焦点目标时，朝向用 slerp 平滑过渡
+		var current_global = _camera.global_transform
+		current_global.origin = target_pos
+		_camera.global_transform = current_global
+		var target_quat = Quaternion(Basis.looking_at(desired_pos - target_pos, Vector3.UP))
+		var rot_weight = 1.0 - exp(-8.0 * delta)
+		current_global = _camera.global_transform
+		var new_quat = Quaternion(current_global.basis).slerp(target_quat, rot_weight)
+		current_global.basis = Basis(new_quat)
+		_camera.global_transform = current_global
+	else:
+		# 无焦点目标时直接跟随飞船，位置朝向均用 global_transform 避免父节点影响
+		var target_basis = Basis.looking_at(desired_pos - target_pos, Vector3.UP)
+		_camera.global_transform = Transform3D(target_basis, target_pos)
 
 ## 根据当前球面坐标（方位角/仰角/距离）计算相机相对偏移
 func _compute_camera_offset() -> Vector3:
@@ -412,12 +424,13 @@ func _snap_camera() -> void:
 	else:
 		_camera_look_at_pos = controlled_ship.global_position
 	
-	_camera.global_position = _camera_look_at_pos + _compute_camera_offset()
+	var offset = _compute_camera_offset()
+	var target_pos = _camera_look_at_pos + offset
 	var target_basis = Basis.looking_at(
-		(_camera_look_at_pos if camera_focus_target else controlled_ship.global_position) - _camera.global_position,
+		(_camera_look_at_pos if camera_focus_target else controlled_ship.global_position) - target_pos,
 		Vector3.UP
 	)
-	_camera.quaternion = Quaternion(target_basis)
+	_camera.global_transform = Transform3D(target_basis, target_pos)
 
 # ---------------------------------------------------------------------------
 # 输入处理
@@ -447,9 +460,9 @@ func _input(event: InputEvent) -> void:
 		_snap_camera()
 		add_message("相机复位", Color(0.3, 0.8, 1))
 	
-	# 左键拖拽 - 旋转视角
+	# 左键拖拽 - 旋转视角（按住 Q 时禁用，避免与 Q+左键移动冲突）
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
+		if event.pressed and not Input.is_key_pressed(KEY_Q):
 			_drag_left_pressed = true
 			_drag_left_start_pos = get_viewport().get_mouse_position()
 			_drag_left_is_dragging = false
