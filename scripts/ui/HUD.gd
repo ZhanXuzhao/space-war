@@ -29,6 +29,7 @@ class_name HUD
 @export var hull_text_label: Label
 @export var cargo_label: Label
 @export var fps_label: Label
+@export var ship_count_label: Label
 @export var auto_lock_check: CheckBox
 @export var auto_attack_check: CheckBox
 @export var missile_trail_check: CheckBox
@@ -164,6 +165,9 @@ func _ready() -> void:
 	# 手动查找帧率标签
 	if not fps_label:
 		fps_label = get_node_or_null("FPSLabel") as Label
+	# 手动查找飞船总数标签
+	if not ship_count_label:
+		ship_count_label = get_node_or_null("ShipCountLabel") as Label
 	
 	# 手动查找召唤按钮、新建游戏按钮和消息日志
 	if not spawn_button:
@@ -360,6 +364,11 @@ func _process(delta: float) -> void:
 	# 更新帧率显示
 	if fps_label:
 		fps_label.text = "FPS: %d" % Performance.get_monitor(Performance.TIME_FPS)
+	
+	# 更新飞船总数
+	if ship_count_label:
+		var ship_count = get_tree().get_nodes_in_group("ships").size()
+		ship_count_label.text = "飞船: %d" % ship_count
 	
 	# 定时更新总览
 	overview_update_timer += delta

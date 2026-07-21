@@ -125,6 +125,7 @@ func _ready() -> void:
 	if _initialized:
 		return
 	_initialized = true
+	add_to_group("ships")
 	_init_stats()
 	_create_default_equipment()
 	_setup_velocity_arrow()
