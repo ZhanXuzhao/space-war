@@ -29,7 +29,26 @@ var missile_trail_visible: bool = true
 ## 爆炸特效可见性（默认开启）
 var explosion_visible: bool = true
 
+## 维修相关配置（从 game_config.cfg 加载）
+var shield_repair_amount: float = 100.0
+var armor_repair_amount: float = 100.0
+var structure_repair_amount: float = 80.0
+
+## 从 game_config.cfg 加载维修参数
+func _load_repair_config() -> void:
+	var config = ConfigFile.new()
+	var err = config.load("res://resources/game_config.cfg")
+	if err != OK:
+		push_error("无法加载 game_config.cfg: ", err)
+		return
+	
+	if config.has_section("repair"):
+		shield_repair_amount = config.get_value("repair", "shield_repair_amount", shield_repair_amount)
+		armor_repair_amount = config.get_value("repair", "armor_repair_amount", armor_repair_amount)
+		structure_repair_amount = config.get_value("repair", "structure_repair_amount", structure_repair_amount)
+
 func _ready() -> void:
+	_load_repair_config()
 	init_player_data()
 
 var player_ship_class: ShipData.ShipClass = ShipData.ShipClass.BATTLESHIP

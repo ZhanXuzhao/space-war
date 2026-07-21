@@ -5,8 +5,9 @@ class_name StructureRepairer
 
 func _apply_effect() -> void:
 	if owner_ship and owner_ship.current_hull < owner_ship.max_hull:
+		var repair_amount = Global.structure_repair_amount * (module_data.effect_amount / 100.0)
 		owner_ship.current_hull = minf(
 			owner_ship.max_hull,
-			owner_ship.current_hull + module_data.effect_amount
+			owner_ship.current_hull + repair_amount
 		)
 		owner_ship.hull_changed.emit(owner_ship.current_hull, owner_ship.max_hull)
