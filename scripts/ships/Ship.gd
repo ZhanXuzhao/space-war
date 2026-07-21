@@ -84,6 +84,8 @@ const TACTICAL_GRID_RADII: Array[float] = [5000.0, 10000.0, 20000.0, 30000.0, 40
 ## 半径数字标签列表（用于每帧更新固定屏幕大小）
 var _range_labels: Array[Label3D] = []
 ## 半径数字的反缩放系数（用于 _process 中计算标签缩放）
+## 战术网格标签字体大小（从 game_config.cfg 加载）
+var _tactical_grid_label_font_size: float = 300000.0
 var _range_label_scale_inv: float = 1.0
 
 ## 移动预览 - 目标位置小圆环（Q+鼠标时显示）
@@ -590,6 +592,11 @@ func _setup_tactical_grid() -> void:
 	
 	# 在每道圆形内侧添加距离数字标签
 	var label_color = Color(1.0, 1.0, 1.0, 0.9)
+	# 从 game_config.cfg 加载战术网格标签字体大小
+	var cfg = ConfigFile.new()
+	if cfg.load("res://resources/game_config.cfg") == OK:
+		var val = cfg.get_value("tactical_grid", "label_font_size", 300000)
+		_tactical_grid_label_font_size = float(val)
 	for radius in TACTICAL_GRID_RADII:
 		var km = int(radius / 1000.0)
 		var sys_font = SystemFont.new()
@@ -610,7 +617,7 @@ func _setup_tactical_grid() -> void:
 			label.name = "RangeLabel_%d_%d_%d" % [km, int(pos.x), int(pos.z)]
 			label.text = "%dkm" % km
 			label.font = font
-			label.font_size = 300000
+			label.font_size = _tactical_grid_label_font_size
 			label.outline_size = 8
 			label.outline_modulate = Color(0.0, 0.0, 0.0, 0.9)
 			label.modulate = label_color
