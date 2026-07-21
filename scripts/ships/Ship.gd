@@ -478,6 +478,8 @@ func _process(delta: float) -> void:
 	_update_velocity_arrow()
 	_update_approach(delta)
 	_update_range_labels()
+	# 更新环绕轨迹圆环的反旋转（敌方飞船也会旋转，需保持 XZ 水平）
+	_update_orbit_trajectory_world_aligned()
 	if faction == Faction.PLAYER:
 		_update_drop_lines()
 		_update_tactical_grid_world_aligned()
@@ -680,7 +682,8 @@ func _append_drop_lines_recursive(node: Node, st: SurfaceTool) -> void:
 ## 圆心 = 玩家原点，半径 = 敌我距离，
 ## 平面 = 敌我所在的垂直平面，从敌船位置落到 XZ 网格面（y=0）
 func _draw_drop_arc(st: SurfaceTool, enemy: Ship) -> void:
-	var local_pos = to_local(enemy.global_position)
+	# 使用世界空间相对坐标而非 to_local()，避免玩家飞船旋转导致弧线错位
+	var local_pos = enemy.global_position - global_position
 	var r = local_pos.length()
 	if r < 1.0:
 		return
@@ -1008,7 +1011,16 @@ func show_orbit_trajectory(radius: float = 1200.0, color: Color = Color(0.3, 0.8
 	mesh.surface_set_material(0, mat)
 
 	_trajectory_instance.mesh = mesh
+	# 抵消飞船旋转，使圆环始终保持在水平 XZ 平面
+	_trajectory_instance.transform.basis = Basis(global_basis.get_rotation_quaternion().inverse())
 	_trajectory_instance.visible = true
+
+## 每帧反旋转环绕轨迹圆环，使其始终保持在水平 XZ 平面
+func _update_orbit_trajectory_world_aligned() -> void:
+	if not _trajectory_instance or not _trajectory_instance.visible:
+		return
+	var inv_rot = Basis(global_basis.get_rotation_quaternion().inverse())
+	_trajectory_instance.transform.basis = inv_rot
 
 ## 隐藏环绕轨迹
 func hide_orbit_trajectory() -> void:
