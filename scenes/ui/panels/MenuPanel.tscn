@@ -39,6 +39,15 @@ theme_override_font_sizes/font_size = 11
 text = "召唤x10"
 flat = true
 
+[node name="SummonAllyButton" type="Button" parent="ButtonList"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 1, 0.6, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.3, 0.3, 1)
+theme_override_colors/font_hover_color = Color(0.5, 1, 0.8, 1)
+theme_override_font_sizes/font_size = 11
+text = "召唤友军"
+flat = true
+
 [node name="NewGameButton" type="Button" parent="ButtonList"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.3, 1, 0.3, 1)

@@ -113,6 +113,14 @@ theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 10
 text = "类型"
 
+[node name="FactionHeader" type="Label" parent="ColumnHeader"]
+custom_minimum_size = Vector2(40, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+text = "军团"
+
 [node name="ScrollContainer" type="ScrollContainer" parent="."]
 layout_mode = 0
 anchor_right = 1.0

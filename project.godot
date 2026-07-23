@@ -18,6 +18,7 @@ config/icon="res://images/icon_launch.png"
 [autoload]
 
 Global="*res://autoload/Global.gd"
+FleetManager="*res://scripts/fleet/FleetManager.gd"
 
 [display]
 

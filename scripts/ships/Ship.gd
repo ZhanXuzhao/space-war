@@ -120,6 +120,30 @@ var _approach_line: MeshInstance3D
 ## 阵营
 enum Faction { PLAYER, NPC_FRIENDLY, NPC_HOSTILE, NEUTRAL }
 @export var faction: Faction = Faction.NEUTRAL
+## 所属舰队ID（-1 表示无舰队）
+var fleet_id: int = -1
+## 军团名称（用于总览显示）
+var faction_name: String = ""
+
+## 设置舰队ID
+func set_fleet(id: int) -> void:
+	fleet_id = id
+
+## 获取军团显示名称
+func get_faction_display_name() -> String:
+	if not faction_name.is_empty():
+		return faction_name
+	match faction:
+		Faction.PLAYER:
+			return "玩家"
+		Faction.NPC_FRIENDLY:
+			return "友军"
+		Faction.NPC_HOSTILE:
+			return "天蛇集团"
+		Faction.NEUTRAL:
+			return "中立"
+		_:
+			return "未知"
 
 func _ready() -> void:
 	if _initialized:

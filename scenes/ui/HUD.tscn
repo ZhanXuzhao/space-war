@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://targetpanel" path="res://scenes/ui/panels/TargetPanel.tscn" id="3_target"]
 [ext_resource type="PackedScene" uid="uid://overviewpanel" path="res://scenes/ui/panels/OverviewPanel.tscn" id="4_overview"]
 [ext_resource type="PackedScene" uid="uid://menupanel" path="res://scenes/ui/panels/MenuPanel.tscn" id="5_menu"]
+[ext_resource type="PackedScene" uid="uid://fleetpanel" path="res://scenes/ui/panels/FleetPanel.tscn" id="9_fleet"]
 [ext_resource type="PackedScene" uid="uid://messagelog" path="res://scenes/ui/panels/MessageLog.tscn" id="6_msg"]
 [ext_resource type="PackedScene" uid="uid://lockedpanel" path="res://scenes/ui/panels/LockedPanel.tscn" id="7_locked"]
 [ext_resource type="PackedScene" uid="uid://equipmentpanel" path="res://scenes/ui/panels/EquipmentPanel.tscn" id="8_equip"]
@@ -21,6 +22,8 @@ script = ExtResource("1")
 
 [node name="MenuPanel" parent="." instance=ExtResource("5_menu")]
 
+[node name="FleetPanel" parent="." instance=ExtResource("9_fleet")]
+
 [node name="MessageLog" parent="." instance=ExtResource("6_msg")]
 
 [node name="OverviewContextMenu" type="PopupMenu" parent="."]
@@ -33,9 +36,9 @@ script = ExtResource("1_w3nhd")
 
 [node name="TopBar" type="HBoxContainer" parent="."]
 layout_mode = 0
-offset_left = 85.0
+offset_left = 285.0
 offset_top = 2.0
-offset_right = 340.0
+offset_right = 540.0
 offset_bottom = 20.0
 
 [node name="FPSLabel" type="Label" parent="TopBar"]

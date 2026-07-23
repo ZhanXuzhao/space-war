@@ -91,13 +91,14 @@ const OVERVIEW_UPDATE_INTERVAL: float = 1.0  # 每秒更新一次
 const OVERVIEW_MAX_RANGE: float = 2000000.0  # 最大探测范围 2000km
 
 ## 排序状态
-enum SortColumn { NAME, DISTANCE, SPEED, TYPE }
+enum SortColumn { NAME, DISTANCE, SPEED, TYPE, FACTION }
 var sort_column: SortColumn = SortColumn.DISTANCE
 var sort_ascending: bool = true
 var _name_header: Label
 var _dist_header: Label
 var _speed_header: Label
 var _type_header: Label
+var _faction_header: Label
 
 func _ready() -> void:
 	global_ref = get_node("/root/Global")
@@ -178,6 +179,10 @@ func _ready() -> void:
 		spawn_button = get_node_or_null("MenuPanel/ButtonList/SpawnButton") as Button
 	if not spawn_x10_button:
 		spawn_x10_button = get_node_or_null("MenuPanel/ButtonList/SpawnX10Button") as Button
+	# 手动查找召唤友军按钮
+	var summon_ally_btn = get_node_or_null("MenuPanel/ButtonList/SummonAllyButton") as Button
+	if summon_ally_btn:
+		summon_ally_btn.pressed.connect(_on_summon_ally_button_pressed)
 	if not new_game_button:
 		new_game_button = get_node_or_null("MenuPanel/ButtonList/NewGameButton") as Button
 	if not restart_game_button:
@@ -199,6 +204,7 @@ func _ready() -> void:
 	_dist_header = get_node_or_null("OverviewPanel/ColumnHeader/DistHeader") as Label
 	_speed_header = get_node_or_null("OverviewPanel/ColumnHeader/SpeedHeader") as Label
 	_type_header = get_node_or_null("OverviewPanel/ColumnHeader/TypeHeader") as Label
+	_faction_header = get_node_or_null("OverviewPanel/ColumnHeader/FactionHeader") as Label
 	
 	# 连接列标题点击
 	if _name_header:
@@ -213,6 +219,9 @@ func _ready() -> void:
 	if _speed_header:
 		_speed_header.mouse_filter = Control.MOUSE_FILTER_STOP
 		_speed_header.gui_input.connect(_on_header_click.bind(SortColumn.SPEED))
+	if _faction_header:
+		_faction_header.mouse_filter = Control.MOUSE_FILTER_STOP
+		_faction_header.gui_input.connect(_on_header_click.bind(SortColumn.FACTION))
 	
 	_update_sort_indicators()
 	
@@ -598,11 +607,8 @@ func _scan_nearby_objects(player_pos: Vector3, entries: Array[Dictionary]) -> vo
 
 func _scan_node_children(node: Node, player_pos: Vector3, entries: Array[Dictionary]) -> void:
 	for child in node.get_children():
-		# 跳过自身
-		if child == player_ship:
-			continue
-		
-		# 检查是否为3D空间中的对象
+		# 检查是否为3D空间中的对象（包括所有玩家飞船）
+		# 不跳过 player_ship，因为可能有多个玩家飞船
 		if child is Node3D:
 			var dist = player_pos.distance_to(child.global_position)
 			if dist > OVERVIEW_MAX_RANGE:
@@ -616,32 +622,47 @@ func _scan_node_children(node: Node, player_pos: Vector3, entries: Array[Diction
 		_scan_node_children(child, player_pos, entries)
 
 func _classify_object(obj: Node, distance: float) -> Dictionary:
-	var result: Dictionary = { "node": obj, "distance": distance, "name": "", "type": "", "speed": 0.0 }
+	var result: Dictionary = { "node": obj, "distance": distance, "name": "", "type": "", "speed": 0.0, "faction": "" }
 	
-	# 飞船（排除玩家）
-	if obj is Ship and obj.faction != Ship.Faction.PLAYER:
+	# 所有飞船（包括玩家）
+	if obj is Ship:
 		if obj.ship_data and obj.ship_data.ship_name:
 			result["name"] = obj.ship_data.ship_name
 		else:
 			result["name"] = "未知飞船"
-		# 显示具体船型（护卫舰/巡洋舰/战列舰）
 		if obj.ship_data:
 			result["type"] = ShipData.SHIP_CLASS_NAMES.get(obj.ship_data.ship_class, "飞船")
 		else:
 			result["type"] = "飞船"
 		result["speed"] = obj.current_speed
+		
+		# 获取军团/舰队名称
+		if obj is Ship:
+			var ship = obj as Ship
+			# 优先显示舰队名称
+			var fm = get_node_or_null("/root/FleetManager")
+			if fm and ship.faction == Ship.Faction.PLAYER:
+				var fleet = fm.get_fleet_of_ship(ship)
+				if fleet:
+					result["faction"] = fleet.fleet_name
+				else:
+					result["faction"] = ship.get_faction_display_name()
+			else:
+				result["faction"] = ship.get_faction_display_name()
 		return result
 	
 	# 小行星
 	if obj is Asteroid:
 		result["name"] = obj.ore_type + "小行星"
 		result["type"] = "小行星"
+		result["faction"] = "-"
 		return result
 	
 	# 空间站
 	if obj is Station:
 		result["name"] = obj.station_name
 		result["type"] = "空间站"
+		result["faction"] = "-"
 		return result
 	
 	return {}
@@ -711,10 +732,39 @@ func _refresh_overview_list(entries: Array[Dictionary]) -> void:
 		speed_label.mouse_filter = Control.MOUSE_FILTER_STOP
 		type_label.mouse_filter = Control.MOUSE_FILTER_STOP
 		
+		# 军团
+		var faction_label = Label.new()
+		faction_label.text = entry.get("faction", "")
+		faction_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		faction_label.add_theme_font_size_override("font_size", 10)
+		match entry.get("faction", ""):
+			"天蛇集团":
+				faction_label.add_theme_color_override("font_color", Color(1, 0.3, 0.3, 1))
+			"玩家":
+				faction_label.add_theme_color_override("font_color", Color(0.3, 0.6, 1, 1))
+			"第一舰队", "第二舰队", "第三舰队", "第四舰队", "第五舰队":
+				faction_label.add_theme_color_override("font_color", Color(0.3, 0.8, 1, 1))
+			_:
+				faction_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6, 1))
+		
+		# 点击 → 锁定/选择目标
+		name_label.gui_input.connect(_on_overview_label_input.bind(entry))
+		dist_label.gui_input.connect(_on_overview_label_input.bind(entry))
+		speed_label.gui_input.connect(_on_overview_label_input.bind(entry))
+		type_label.gui_input.connect(_on_overview_label_input.bind(entry))
+		faction_label.gui_input.connect(_on_overview_label_input.bind(entry))
+		
+		name_label.mouse_filter = Control.MOUSE_FILTER_STOP
+		dist_label.mouse_filter = Control.MOUSE_FILTER_STOP
+		speed_label.mouse_filter = Control.MOUSE_FILTER_STOP
+		type_label.mouse_filter = Control.MOUSE_FILTER_STOP
+		faction_label.mouse_filter = Control.MOUSE_FILTER_STOP
+		
 		row.add_child(name_label)
 		row.add_child(dist_label)
 		row.add_child(speed_label)
 		row.add_child(type_label)
+		row.add_child(faction_label)
 		overview_list.add_child(row)
 
 static func _format_speed(speed: float) -> String:
@@ -767,6 +817,11 @@ func _sort_entries(entries: Array[Dictionary]) -> void:
 				entries.sort_custom(func(a, b): return a["speed"] < b["speed"])
 			else:
 				entries.sort_custom(func(a, b): return a["speed"] > b["speed"])
+		SortColumn.FACTION:
+			if sort_ascending:
+				entries.sort_custom(func(a, b): return a.get("faction", "") < b.get("faction", ""))
+			else:
+				entries.sort_custom(func(a, b): return a.get("faction", "") > b.get("faction", ""))
 
 func _update_sort_indicators() -> void:
 	var arrow_up = " ▲"
@@ -794,6 +849,11 @@ func _update_sort_indicators() -> void:
 			_speed_header.text = "速度" + (arrow_up if sort_ascending else arrow_down)
 		else:
 			_speed_header.text = "速度"
+	if _faction_header:
+		if sort_column == SortColumn.FACTION:
+			_faction_header.text = "军团" + (arrow_up if sort_ascending else arrow_down)
+		else:
+			_faction_header.text = "军团"
 
 ## ====== 总览交互（点击行 = 锁定/右键菜单） ======
 
@@ -1550,6 +1610,14 @@ func _on_spawn_x10_button_pressed() -> void:
 			add_message("召唤一波敌舰 x10!", Color(1, 0.6, 0.1))
 		else:
 			add_message("错误: 找不到 EnemySpawner!", Color.RED)
+
+## 召唤友军按钮点击
+func _on_summon_ally_button_pressed() -> void:
+	var fleet_panel = get_node_or_null("FleetPanel")
+	if fleet_panel and fleet_panel.has_method("_on_summon_ally"):
+		fleet_panel._on_summon_ally()
+	else:
+		add_message("错误: 找不到舰队面板!", Color.RED)
 
 ## ====== 新建游戏 ======
 
