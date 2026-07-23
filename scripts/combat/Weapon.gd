@@ -33,7 +33,7 @@ var laser_beam_timer: float = 0.0
 var laser_end_pos: Vector3 = Vector3.ZERO
 var laser_track_target: Ship = null  # 命中时追踪目标移动
 const LASER_DURATION: float = 1.0
-const LASER_THICKNESS: float = 1.5
+const LASER_THICKNESS: float = 4.5
 const MISS_OFFSET_RANGE: float = 120.0  # 未命中时激光偏移范围
 
 ## 根据武器类型返回炮台颜色
@@ -83,12 +83,10 @@ func _ready() -> void:
 	cylinder.top_radius = LASER_THICKNESS
 	cylinder.bottom_radius = LASER_THICKNESS
 	cylinder.height = 1.0
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = Color(1.0, 0.2, 0.1)
-	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.2, 0.1)
-	mat.emission_energy_multiplier = 3.0
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var mat = ShaderMaterial.new()
+	mat.shader = load("res://shaders/laser_beam.gdshader")
+	mat.set_shader_parameter("center_color", Color(1.0, 0.6, 0.0))
+	mat.set_shader_parameter("edge_color", Color(1.0, 0.1, 0.05))
 	cylinder.material = mat
 	laser_beam.mesh = cylinder
 	laser_beam.visible = false
