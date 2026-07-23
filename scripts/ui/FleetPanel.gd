@@ -301,56 +301,66 @@ func _select_fleet(fleet_id: int) -> void:
 var _drag_active: bool = false
 var _drag_ship: Node = null
 var _drag_source_fleet: int = -1
-## 拖拽追踪（在 _input 中检测，无需依赖 gui_input 的事件顺序）
+## 拖拽追踪
 var _press_pos: Vector2 = Vector2.ZERO
 var _press_ship: Node = null
 var _press_fleet: int = -1
 var _press_active: bool = false
-## 静态标记 - 供 PlayerController 等外部脚本检查是否有 UI 拖拽正在进行
-static var global_drag_active: bool = false
 
 func _input(event: InputEvent) -> void:
-	# 拖拽进行中时，拦截所有输入事件，防止穿透到3D场景
+	# 拖拽进行中时：拦截事件 → 阻止 _unhandled_input，仅处理释放
 	if _drag_active:
 		if event is InputEventMouseButton or event is InputEventMouseMotion:
 			get_viewport().set_input_as_handled()
 			if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 				_finish_drag()
-		return  # 已激活拖拽时不再走下面的检测
-	
-	# 鼠标按下 → 记录，检查是否点在飞船行上
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_press_pos = get_viewport().get_mouse_position()
-		_press_ship = _find_ship_at_position(_press_pos)
-		_press_fleet = _find_fleet_at_position(_press_pos)
-		_press_active = true
-		# 立即设置全局拖拽标记，防止 PlayerController 在这一帧开始镜头旋转
-		if _press_ship != null:
-			global_drag_active = true
 		return
 	
-	# 鼠标释放 → 清除全局标记
+	# 检查事件坐标是否在本面板区域内
+	var is_over_panel = false
+	if event is InputEventMouseButton:
+		is_over_panel = _is_point_in_panel(get_viewport().get_mouse_position())
+	elif event is InputEventMouseMotion:
+		is_over_panel = _is_point_in_panel(get_viewport().get_mouse_position())
+	
+	# 鼠标按下 → 记录，检查是否点在面板区域内
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_press_pos = get_viewport().get_mouse_position()
+		_press_ship = _find_ship_at_position(_press_pos) if is_over_panel else null
+		_press_fleet = _find_fleet_at_position(_press_pos) if is_over_panel else -1
+		_press_active = is_over_panel
+		# 点在面板区域内时即拦截事件，不让 _unhandled_input 收到
+		if is_over_panel:
+			get_viewport().set_input_as_handled()
+		return
+	
+	# 鼠标释放 → 清除状态
 	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		global_drag_active = false
 		_press_active = false
 		_press_ship = null
 		return
 	
-	# 鼠标左键拖动 → 检测是否从飞船行开始，超过阈值则激活拖拽
+	# 鼠标左键移动 → 在面板区域内时持续拦截
 	if event is InputEventMouseMotion and event.button_mask == MOUSE_BUTTON_MASK_LEFT:
-		if not _press_active or _press_ship == null:
+		if not _press_active:
 			return
-		var drag_dist = get_viewport().get_mouse_position().distance_to(_press_pos)
-		if drag_dist < 10.0:
-			return
-		
-		# 激活手动拖拽 — 在 _input 中设置，先于 PlayerController 的 _input 处理
-		_drag_active = true
-		global_drag_active = true
-		_drag_ship = _press_ship
-		_drag_source_fleet = _press_fleet
+		# 持续拦截 _unhandled_input（镜头旋转从此处被阻断）
 		get_viewport().set_input_as_handled()
-		_press_active = false
+		
+		# 如果是从飞船行开始的拖拽，超过阈值则激活内部拖拽状态
+		if _press_ship != null:
+			var drag_dist = get_viewport().get_mouse_position().distance_to(_press_pos)
+			if drag_dist >= 10.0:
+				_drag_active = true
+				_drag_ship = _press_ship
+				_drag_source_fleet = _press_fleet
+
+## 判断全局坐标是否在本面板区域内
+func _is_point_in_panel(pos: Vector2) -> bool:
+	if not is_inside_tree():
+		return false
+	var rect = get_global_rect()
+	return rect.has_point(pos)
 
 ## 根据全局坐标查找该位置是否有飞船行，返回飞船节点
 func _find_ship_at_position(pos: Vector2) -> Node:
@@ -388,7 +398,6 @@ func _on_ship_row_input(event: InputEvent, row: Panel, ship: Node, fleet_id: int
 func _finish_drag() -> void:
 	if not _drag_active or not _drag_ship or not is_instance_valid(_drag_ship):
 		_drag_active = false
-		global_drag_active = false
 		_drag_ship = null
 		return
 	
@@ -420,7 +429,6 @@ func _finish_drag() -> void:
 		_refresh()
 	
 	_drag_active = false
-	global_drag_active = false
 	_drag_ship = null
 	_drag_source_fleet = -1
 

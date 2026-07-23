@@ -473,40 +473,14 @@ func _input(event: InputEvent) -> void:
 		_snap_camera()
 		add_message("相机复位", Color(0.3, 0.8, 1))
 	
-	# 左键拖拽 - 旋转视角（按住 Q 时禁用，避免与 Q+左键移动冲突）
-	# 舰队面板拖拽中时跳过，防止干扰
-	if FleetPanel.global_drag_active:
-		_drag_left_pressed = false
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+	# 左键拖拽 - 旋转视角（移到 _unhandled_input 处理，让 UI 可通过 set_input_as_handled 拦截）
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed and not Input.is_key_pressed(KEY_Q):
 			_drag_left_pressed = true
 			_drag_left_start_pos = get_viewport().get_mouse_position()
 			_drag_left_is_dragging = false
 		else:
 			_drag_left_pressed = false
-	
-	if event is InputEventMouseMotion and _drag_left_pressed:
-		if FleetPanel.global_drag_active:
-			_drag_left_pressed = false
-			return
-		if not _drag_left_is_dragging:
-			var drag_dist = _drag_left_start_pos.distance_to(get_viewport().get_mouse_position())
-			if drag_dist > 5.0:
-				_drag_left_is_dragging = true
-		if _drag_left_is_dragging:
-			_cam_azimuth -= event.relative.x * camera_orbit_speed * rad_to_deg(1.0)
-			_cam_elevation += event.relative.y * camera_orbit_speed * rad_to_deg(1.0)
-			_cam_elevation = clampf(_cam_elevation, -89.0, 89.0)
-			_snap_camera()
-	
-	# 滚轮缩放
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			_cam_distance = minf(camera_max_distance, _cam_distance * camera_zoom_factor)
-			_snap_camera()
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			_cam_distance = maxf(camera_min_distance, _cam_distance / camera_zoom_factor)
-			_snap_camera()
 	
 	# -= 键 - 调整游戏速度
 	const TIMESCALE_STEPS: Array[float] = [0.0, 0.1, 0.5, 1.0, 2.0, 3.0, 5.0]
@@ -533,6 +507,35 @@ func _input(event: InputEvent) -> void:
 			idx = clampi(idx - 1, 0, TIMESCALE_STEPS.size() - 1)
 			Engine.time_scale = TIMESCALE_STEPS[idx]
 			add_message("游戏速度: x%.1f" % Engine.time_scale, Color(0.3, 0.8, 1))
+
+# ---------------------------------------------------------------------------
+# 未处理输入（UI 未拦截的输入在这里处理，如镜头旋转）
+# ---------------------------------------------------------------------------
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not controlled_ship or not controlled_ship.is_alive:
+		return
+	
+	# 左键拖拽 - 旋转视角
+	if event is InputEventMouseMotion and _drag_left_pressed:
+		if not _drag_left_is_dragging:
+			var drag_dist = _drag_left_start_pos.distance_to(get_viewport().get_mouse_position())
+			if drag_dist > 5.0:
+				_drag_left_is_dragging = true
+		if _drag_left_is_dragging:
+			_cam_azimuth -= event.relative.x * camera_orbit_speed * rad_to_deg(1.0)
+			_cam_elevation += event.relative.y * camera_orbit_speed * rad_to_deg(1.0)
+			_cam_elevation = clampf(_cam_elevation, -89.0, 89.0)
+			_snap_camera()
+	
+	# 滚轮缩放
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			_cam_distance = minf(camera_max_distance, _cam_distance * camera_zoom_factor)
+			_snap_camera()
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			_cam_distance = maxf(camera_min_distance, _cam_distance / camera_zoom_factor)
+			_snap_camera()
 
 # ---------------------------------------------------------------------------
 # HUD 通信
