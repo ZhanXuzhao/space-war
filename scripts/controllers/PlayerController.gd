@@ -474,7 +474,10 @@ func _input(event: InputEvent) -> void:
 		add_message("相机复位", Color(0.3, 0.8, 1))
 	
 	# 左键拖拽 - 旋转视角（按住 Q 时禁用，避免与 Q+左键移动冲突）
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+	# 舰队面板拖拽中时跳过，防止干扰
+	if FleetPanel.global_drag_active:
+		_drag_left_pressed = false
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed and not Input.is_key_pressed(KEY_Q):
 			_drag_left_pressed = true
 			_drag_left_start_pos = get_viewport().get_mouse_position()
@@ -483,6 +486,9 @@ func _input(event: InputEvent) -> void:
 			_drag_left_pressed = false
 	
 	if event is InputEventMouseMotion and _drag_left_pressed:
+		if FleetPanel.global_drag_active:
+			_drag_left_pressed = false
+			return
 		if not _drag_left_is_dragging:
 			var drag_dist = _drag_left_start_pos.distance_to(get_viewport().get_mouse_position())
 			if drag_dist > 5.0:

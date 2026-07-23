@@ -297,7 +297,77 @@ func _select_fleet(fleet_id: int) -> void:
 							else:
 								c.add_theme_color_override("font_color", Color(0.3, 0.6, 1, 1))
 
-## 更新高亮显示
+## 拖拽状态（实例变量）
+var _drag_active: bool = false
+var _drag_ship: Node = null
+var _drag_source_fleet: int = -1
+## 拖拽追踪（在 _input 中检测，无需依赖 gui_input 的事件顺序）
+var _press_pos: Vector2 = Vector2.ZERO
+var _press_ship: Node = null
+var _press_fleet: int = -1
+var _press_active: bool = false
+## 静态标记 - 供 PlayerController 等外部脚本检查是否有 UI 拖拽正在进行
+static var global_drag_active: bool = false
+
+func _input(event: InputEvent) -> void:
+	# 拖拽进行中时，拦截所有输入事件，防止穿透到3D场景
+	if _drag_active:
+		if event is InputEventMouseButton or event is InputEventMouseMotion:
+			get_viewport().set_input_as_handled()
+			if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				_finish_drag()
+		return  # 已激活拖拽时不再走下面的检测
+	
+	# 鼠标按下 → 记录，检查是否点在飞船行上
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_press_pos = get_viewport().get_mouse_position()
+		_press_ship = _find_ship_at_position(_press_pos)
+		_press_fleet = _find_fleet_at_position(_press_pos)
+		_press_active = true
+		# 立即设置全局拖拽标记，防止 PlayerController 在这一帧开始镜头旋转
+		if _press_ship != null:
+			global_drag_active = true
+		return
+	
+	# 鼠标释放 → 清除全局标记
+	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		global_drag_active = false
+		_press_active = false
+		_press_ship = null
+		return
+	
+	# 鼠标左键拖动 → 检测是否从飞船行开始，超过阈值则激活拖拽
+	if event is InputEventMouseMotion and event.button_mask == MOUSE_BUTTON_MASK_LEFT:
+		if not _press_active or _press_ship == null:
+			return
+		var drag_dist = get_viewport().get_mouse_position().distance_to(_press_pos)
+		if drag_dist < 10.0:
+			return
+		
+		# 激活手动拖拽 — 在 _input 中设置，先于 PlayerController 的 _input 处理
+		_drag_active = true
+		global_drag_active = true
+		_drag_ship = _press_ship
+		_drag_source_fleet = _press_fleet
+		get_viewport().set_input_as_handled()
+		_press_active = false
+
+## 根据全局坐标查找该位置是否有飞船行，返回飞船节点
+func _find_ship_at_position(pos: Vector2) -> Node:
+	# 遍历所有 _fleet_rows 展开后的飞船行
+	# 直接检查 _list 中的子节点
+	if not _list or not _list.is_inside_tree():
+		return null
+	for child in _list.get_children():
+		if not (child is Panel) or not _is_ship_row(child):
+			continue
+		var global_rect = Rect2()
+		if child is Panel:
+			global_rect = child.get_global_rect()
+			if global_rect.has_point(pos):
+				return child.get_meta("ship_node", null)
+	return null
+
 func _update_selection_highlight() -> void:
 	for fid in _fleet_rows:
 		if _fleet_rows[fid] and is_instance_valid(_fleet_rows[fid]):
@@ -306,92 +376,53 @@ func _update_selection_highlight() -> void:
 			style.bg_color = bg_color
 			_fleet_rows[fid].add_theme_stylebox_override("panel", style)
 
-## 飞船行输入事件（支持拖拽）
-## 长按（按下并拖动）启动拖拽，单击仅选中舰队
+## 飞船行输入事件（仅处理单击选中，拖拽由 _input 统一处理）
 func _on_ship_row_input(event: InputEvent, row: Panel, ship: Node, fleet_id: int) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# 记录按下的起始位置，用于后续判断是否拖动
-		row.set_meta("drag_start_pos", get_viewport().get_mouse_position())
-		row.set_meta("drag_ship", ship)
-		row.set_meta("drag_fleet_id", fleet_id)
-		row.set_meta("is_dragging", false)
-		return
-	
 	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# 如果 mouse 释放时没有拖动过，视为点击 → 选中该舰队
-		if not row.get_meta("is_dragging", false):
-			if fleet_id >= 0:
-				_select_fleet(fleet_id)
-				_update_selection_highlight()
-		row.set_meta("drag_start_pos", null)
-		row.set_meta("is_dragging", false)
-		return
-	
-	if event is InputEventMouseMotion and event.button_mask == MOUSE_BUTTON_MASK_LEFT:
-		var start_pos = row.get_meta("drag_start_pos", null)
-		if start_pos == null:
-			return
-		# 判断是否移动了足够距离（超过10像素）才启动拖拽
-		if not row.get_meta("is_dragging", false):
-			var drag_distance = get_viewport().get_mouse_position().distance_to(start_pos)
-			if drag_distance < 10.0:
-				return
-			row.set_meta("is_dragging", true)
-		
-		var drag_data = {
-			"ship": ship,
-			"source_fleet_id": fleet_id,
-			"type": "fleet_ship"
-		}
-		var preview = Label.new()
-		if ship is Ship and ship.ship_data:
-			preview.text = ship.ship_data.ship_name
-		else:
-			preview.text = ship.name
-		preview.add_theme_color_override("font_color", Color(1, 1, 1, 1))
-		preview.add_theme_font_size_override("font_size", 12)
-		row.set_drag_preview(preview)
-		row.force_drag(drag_data, preview)
+		# 如果没有激活拖拽，视为点击 → 选中该舰队
+		if not _drag_active and fleet_id >= 0:
+			_select_fleet(fleet_id)
+			_update_selection_highlight()
 
-## 接收拖放
-func can_drop_data(at_position: Vector2, data: Variant) -> bool:
-	if data is Dictionary and data.get("type") == "fleet_ship":
-		return true
-	return false
-
-func drop_data(at_position: Vector2, data: Variant) -> void:
-	if not (data is Dictionary) or not data.has("ship"):
-		return
-	
-	var ship = data["ship"] as Node
-	if not ship or not is_instance_valid(ship):
+## 结束拖拽 → 处理落点
+func _finish_drag() -> void:
+	if not _drag_active or not _drag_ship or not is_instance_valid(_drag_ship):
+		_drag_active = false
+		global_drag_active = false
+		_drag_ship = null
 		return
 	
 	var fm = get_node_or_null("/root/FleetManager")
-	if not fm:
-		return
-	
-	# at_position 是相对于本 Panel 的局部坐标
-	# 使用视口鼠标位置作为全局坐标
-	var global_pos = get_viewport().get_mouse_position()
-	var target_fleet_id = _find_fleet_at_position(global_pos)
-	
-	if target_fleet_id >= 0:
-		fm.add_ship_to_fleet(ship, target_fleet_id)
-		# 显示提示
-		var fleet = fm.get_fleet_by_id(target_fleet_id)
-		if fleet:
+	if fm:
+		var global_pos = get_viewport().get_mouse_position()
+		var target_fleet_id = _find_fleet_at_position(global_pos)
+		
+		if target_fleet_id >= 0:
+			if target_fleet_id != _drag_source_fleet:
+				fm.add_ship_to_fleet(_drag_ship, target_fleet_id)
+				var fleet = fm.get_fleet_by_id(target_fleet_id)
+				if fleet:
+					var hud = get_node_or_null("/root/SpaceWar/HUD")
+					if hud and hud.has_method("add_message"):
+						hud.add_message("%s 加入 %s" % [
+							_drag_ship.ship_data.ship_name if _drag_ship is Ship and _drag_ship.ship_data else _drag_ship.name,
+							fleet.fleet_name
+						], Color(0.3, 0.8, 1))
+		elif target_fleet_id == -2:
+			# 拖到未编队区域
+			fm.remove_ship_from_fleet(_drag_ship)
 			var hud = get_node_or_null("/root/SpaceWar/HUD")
 			if hud and hud.has_method("add_message"):
-				hud.add_message("%s 加入 %s" % [ship.ship_data.ship_name if ship is Ship and ship.ship_data else ship.name, fleet.fleet_name], Color(0.3, 0.8, 1))
-	elif target_fleet_id == -2:
-		# 拖到未编队区域
-		fm.remove_ship_from_fleet(ship)
-		var hud = get_node_or_null("/root/SpaceWar/HUD")
-		if hud and hud.has_method("add_message"):
-			hud.add_message("%s 已脱离编队" % (ship.ship_data.ship_name if ship is Ship and ship.ship_data else ship.name), Color(0.7, 0.7, 0.7))
+				hud.add_message("%s 已脱离编队" % (
+					_drag_ship.ship_data.ship_name if _drag_ship is Ship and _drag_ship.ship_data else _drag_ship.name
+				), Color(0.7, 0.7, 0.7))
+		
+		_refresh()
 	
-	_refresh()
+	_drag_active = false
+	global_drag_active = false
+	_drag_ship = null
+	_drag_source_fleet = -1
 
 ## 查找位置处的舰队ID（pos 为全局屏幕坐标）
 func _find_fleet_at_position(pos: Vector2) -> int:
