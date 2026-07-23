@@ -30,6 +30,7 @@ class_name HUD
 @export var cargo_label: Label
 @export var fps_label: Label
 @export var ship_count_label: Label
+@export var time_scale_label: Label
 @export var auto_lock_check: CheckBox
 @export var auto_attack_check: CheckBox
 @export var missile_trail_check: CheckBox
@@ -164,10 +165,13 @@ func _ready() -> void:
 		explosion_check.toggled.connect(_on_explosion_toggled)
 	# 手动查找帧率标签
 	if not fps_label:
-		fps_label = get_node_or_null("FPSLabel") as Label
+		fps_label = get_node_or_null("TopBar/FPSLabel") as Label
 	# 手动查找飞船总数标签
 	if not ship_count_label:
-		ship_count_label = get_node_or_null("ShipCountLabel") as Label
+		ship_count_label = get_node_or_null("TopBar/ShipCountLabel") as Label
+	# 手动查找时间倍率标签
+	if not time_scale_label:
+		time_scale_label = get_node_or_null("TopBar/TimeScaleLabel") as Label
 	
 	# 手动查找召唤按钮、新建游戏按钮和消息日志
 	if not spawn_button:
@@ -369,6 +373,10 @@ func _process(delta: float) -> void:
 	if ship_count_label:
 		var ship_count = get_tree().get_nodes_in_group("ships").size()
 		ship_count_label.text = "飞船: %d" % ship_count
+	
+	# 更新时间倍率
+	if time_scale_label:
+		time_scale_label.text = "倍速: x%.1f" % Engine.time_scale
 	
 	# 定时更新总览
 	overview_update_timer += delta
